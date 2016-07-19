@@ -1,0 +1,658 @@
+commit 601e7005822f4fb30dcf2bbd09248d971f4efec4
+Author: jie <jiej@nvidia.com>
+Date:   Tue Jul 19 16:28:37 2016 -0700
+
+    startup
+---
+ .gitignore                            |  0
+ CMakeLists.txt                        | 94 +++++++++++++++++++++++++++++++++++
+ README                                |  0
+ doc/example/test.c                    |  8 +++
+ libnvpipecodec/nvpipecodec.cxx        | 41 +++++++++++++++
+ libnvpipecodec/nvpipecodec.h          | 54 ++++++++++++++++++++
+ libnvpipecodec/nvpipedecodercuvid.cxx | 33 ++++++++++++
+ libnvpipecodec/nvpipedecodercuvid.h   | 53 ++++++++++++++++++++
+ libnvpipecodec/nvpipeencodernvenc.cxx | 35 +++++++++++++
+ libnvpipecodec/nvpipeencodernvenc.h   | 54 ++++++++++++++++++++
+ libnvpipeutil/nvpipeffmpeginstance.h  | 54 ++++++++++++++++++++
+ libnvpipeutil/util.c                  | 45 +++++++++++++++++
+ nvpipe.h                              | 84 +++++++++++++++++++++++++++++++
+ nvpipe264wrapper.cxx                  | 90 +++++++++++++++++++++++++++++++++
+ 14 files changed, 645 insertions(+)
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..e69de29
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+new file mode 100644
+index 0000000..1d2b76e
+--- /dev/null
++++ b/CMakeLists.txt
+@@ -0,0 +1,94 @@
++cmake_minimum_required(VERSION 3.0)
++project(nvpipe)
++
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -g")
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g")
+
+One shouldn't hardcode debug in the build system, let the user set that.
+
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pthread")
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
++
++set(CMAKE_AUTOMOC ON)
+
+Are you using Qt?  Probably remove this.
+
++include_directories(${OPENGL_INCLUDE_DIR})
++include_directories(${MI_INCLUDE})
++include_directories(${CMAKE_SOURCE_DIR})
++
++# AJ library
++set(NVPIPE "nvpipe")
++
++add_library(${NVPIPE}
++    ${CMAKE_SOURCE_DIR}/nvpipe264wrapper.cxx
++    ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec.cxx
++    ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipedecodercuvid.cxx
++    ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipeencodernvenc.cxx
++    ${CMAKE_SOURCE_DIR}/libnvpipeutil/util.c
++)
++
++# some extra lib needed
++target_link_libraries (${NVPIPE} "-lm -lX11 -lva -lva-drm -lva-x11 -lvdpau")
+
+vdpau is Linux+NVIDIA-only, no?  X11 is Linux-only.
+Might want to conditionalize those on Linux at least.
+
+--- /dev/null
++++ b/doc/example/test.c
+@@ -0,0 +1,8 @@
++#include <stdio.h>
++#include "nvpipe.h"
++
++int main( int argc, char* argv[] ) {
++    nvpipecodec* codec = nvpipe_create_encoder_nvenc();
+
+Strange that the user knows the type.
+
++    printf("hello world!\n");
++    return 0;
++}
+diff --git a/libnvpipecodec/nvpipecodec.cxx b/libnvpipecodec/nvpipecodec.cxx
+new file mode 100644
+index 0000000..48ff099
+--- /dev/null
++++ b/libnvpipecodec/nvpipecodec.cxx
+@@ -0,0 +1,41 @@
++#include "libnvpipecodec/nvpipecodec.h"
++
++void NvPipeCodec::setSize(size_t width, size_t height) {
++    width_ = width;
++    height_ = height;
++}
++
++void NvPipeCodec::setVideoPtr(void* video) {
++    video_ = video;
++}
++    
++void NvPipeCodec::setPicturePtr(void* picture) {
++    picture_ = picture;
++}
++    
++void NvPipeCodec::setBufferSize(size_t buffer_size) {    
++    buffer_size_ = buffer_size;
++}
++    
+diff --git a/libnvpipecodec/nvpipecodec.h b/libnvpipecodec/nvpipecodec.h
+new file mode 100644
+index 0000000..256d5b1
+--- /dev/null
++++ b/libnvpipecodec/nvpipecodec.h
+@@ -0,0 +1,54 @@
++class NvPipeCodec {
++public:
++    virtual void setSize(size_t width, size_t height);
++    
++    virtual void setPicturePtr(void* picture);
++    
++    virtual void setVideoPtr(void* video);
+
+It's not clear what a "picture" and a "video" is.
+
+Anyway this is your internal library implementation.  Don't use void*'s
+in such places unless you must (i.e. it's something you pass directly
+to ffmpeg).
+
++    virtual void setBufferSize(size_t buffer_size);
+
+The size of which buffer?
+
+Better to take both the buffer and its size in the same function, together,
+instead of two separate functions.
+
++    virtual int encode(void* buffer, size_t &size)=0;
++    virtual int decode(void* picture, size_t &width, size_t &height)=0; // return number of picture acquired. 
++    
+
+EOL white space (more than just here, grep for it everywhere)
+
++protected:
++    NvPipeCodec() {};
++    
++private:
++    size_t width_;
++    size_t height_;
++    size_t buffer_size_;
++    
++    void* picture_;
++    
++    void* video_;
++    
++};
+diff --git a/libnvpipecodec/nvpipedecodercuvid.cxx b/libnvpipecodec/nvpipedecodercuvid.cxx
+new file mode 100644
+index 0000000..028e948
+--- /dev/null
++++ b/libnvpipecodec/nvpipedecodercuvid.cxx
+@@ -0,0 +1,33 @@
++#include "libnvpipecodec/nvpipedecodercuvid.h"
++#include <stdio.h>
++
++NvPipeDecoderCuvid::NvPipeDecoderCuvid() {
++    printf("decoder cuvid created\n");
++}
++
++int NvPipeDecoderCuvid::decode(void* picture, size_t &width, size_t &height) {
++    printf("decoding");
++}
+diff --git a/libnvpipecodec/nvpipedecodercuvid.h b/libnvpipecodec/nvpipedecodercuvid.h
+new file mode 100644
+index 0000000..8b34150
+--- /dev/null
++++ b/libnvpipecodec/nvpipedecodercuvid.h
+@@ -0,0 +1,53 @@
++#pragma once
++
++#include "libnvpipecodec/nvpipecodec.h"
++
++#ifdef __cplusplus
++extern "C"
++{
++#endif
++
++#include <libavcodec/avcodec.h>
++#include <libavformat/avformat.h>
++#include <libswscale/swscale.h>
++
++#ifdef __cplusplus
++}
++#endif
++
++class NvPipeDecoderCuvid : public NvPipeCodec {
++public:
++    virtual int encode(void* buffer, size_t &size) {};
++    virtual int decode(void* picture, size_t &width, size_t &height); // return number of picture acquired. 
+
+Very long line.
+Nicer to have the comment before the method anyway.
+
++
++    NvPipeDecoderCuvid();
++    ~NvPipeDecoderCuvid();
++
++protected:
++    //virtual int decodeFrame(void* picture);
++
++private:
++
++};
+diff --git a/libnvpipecodec/nvpipeencodernvenc.cxx b/libnvpipecodec/nvpipeencodernvenc.cxx
+new file mode 100644
+index 0000000..ec1d33f
+--- /dev/null
++++ b/libnvpipecodec/nvpipeencodernvenc.cxx
+@@ -0,0 +1,35 @@
++/*
++ * Copyright (c) 2016 NVIDIA Corporation.  All rights reserved.
++ *
++ * NVIDIA Corporation and its licensors retain all intellectual
++ * property and proprietary rights in and to this software,
++ * related documentation and any modifications thereto.  Any use,
++ * reproduction, disclosure or distribution of this software and
++ * related documentation without an express license agreement from
++ * NVIDIA Corporation is strictly prohibited.
++ *
++ * TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SOFTWARE
++ * IS PROVIDED *AS IS* AND NVIDIA AND ITS SUPPLIERS DISCLAIM ALL
++ * WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED
++ * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
++ * PARTICULAR PURPOSE.  IN NO EVENT SHALL NVIDIA OR ITS SUPPLIERS BE
++ * LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL
++ * DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
++ * LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
++ * INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF
++ * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGES
++ */
++#pragma once
++
++#include "libnvpipecodec/nvpipeencodernvenc.h"
++
++#include <stdio.h>
+
+C++: use <cstdio> etc.  Or even <iostream> and switch how you print.
+(Personally I've never liked std::cout/cerr etc., though)
+
++
++NvPipeEncoderNvenc::NvPipeEncoderNvenc() {
++    printf("encoder nvenc created\n");
++}
++
++int NvPipeEncoderNvenc::encode(void* buffer, size_t &size) {
++    printf("encoding!");
++}
+diff --git a/libnvpipecodec/nvpipeencodernvenc.h b/libnvpipecodec/nvpipeencodernvenc.h
+new file mode 100644
+index 0000000..a8da80b
+--- /dev/null
++++ b/libnvpipecodec/nvpipeencodernvenc.h
+@@ -0,0 +1,54 @@
++/*
++ * Copyright (c) 2016 NVIDIA Corporation.  All rights reserved.
++ *
++ * NVIDIA Corporation and its licensors retain all intellectual
++ * property and proprietary rights in and to this software,
++ * related documentation and any modifications thereto.  Any use,
++ * reproduction, disclosure or distribution of this software and
++ * related documentation without an express license agreement from
++ * NVIDIA Corporation is strictly prohibited.
++ *
++ * TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SOFTWARE
++ * IS PROVIDED *AS IS* AND NVIDIA AND ITS SUPPLIERS DISCLAIM ALL
++ * WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED
++ * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
++ * PARTICULAR PURPOSE.  IN NO EVENT SHALL NVIDIA OR ITS SUPPLIERS BE
++ * LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL
++ * DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
++ * LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
++ * INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF
++ * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGES
++ */
++#pragma once
++
++#include "libnvpipecodec/nvpipecodec.h"
++
++#ifdef __cplusplus
++extern "C"
++{
++#endif
++
++#include <libavcodec/avcodec.h>
++#include <libavformat/avformat.h>
++#include <libswscale/swscale.h>
++
++#ifdef __cplusplus
++}
++#endif
++
++class NvPipeEncoderNvenc : public NvPipeCodec {
++public:
++    virtual int encode(void* buffer, size_t &size);
++    virtual int decode(void* picture, size_t &width, size_t &height) {}; // return number of picture acquired. 
++    
++    NvPipeEncoderNvenc();
++    ~NvPipeEncoderNvenc();
++
++protected:
++    //virtual int encodeFrame(void* picture);
++protected:
++    
++private:
++
++};
+diff --git a/libnvpipeutil/nvpipeffmpeginstance.h b/libnvpipeutil/nvpipeffmpeginstance.h
+new file mode 100644
+index 0000000..f849be5
+--- /dev/null
++++ b/libnvpipeutil/nvpipeffmpeginstance.h
+@@ -0,0 +1,54 @@
++/*
++ * Copyright (c) 2016 NVIDIA Corporation.  All rights reserved.
++ *
++ * NVIDIA Corporation and its licensors retain all intellectual
++ * property and proprietary rights in and to this software,
++ * related documentation and any modifications thereto.  Any use,
++ * reproduction, disclosure or distribution of this software and
++ * related documentation without an express license agreement from
++ * NVIDIA Corporation is strictly prohibited.
++ *
++ * TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SOFTWARE
++ * IS PROVIDED *AS IS* AND NVIDIA AND ITS SUPPLIERS DISCLAIM ALL
++ * WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED
++ * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
++ * PARTICULAR PURPOSE.  IN NO EVENT SHALL NVIDIA OR ITS SUPPLIERS BE
++ * LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL
++ * DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
++ * LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
++ * INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF
++ * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGES
++ */
++
++#ifdef __cplusplus
++extern "C"
++{
++#endif
++
++#include <libavcodec/avcodec.h>
++#include <libavformat/avformat.h>
++#include <libswscale/swscale.h>
++
++#ifdef __cplusplus
++}
++#endif
++
++class NvPipeFfmpegInstance
++{
++public:
++    static NvPipeFfmpegInstance *instance()
++    {
++        if (!s_instance)
++          s_instance = new GlobalClass;
++        return s_instance;
++    }
+
+Is there are reason ffmpeg needs a singleton?
+I don't know ffmpeg, but I'd strongly discourage you from using a singleton in
+general.
+
++    
++private:
++    static NvPipeFfmpegInstance *ffmpeg_instance;
++    
++    NvPipeFfmpegInstance()
++    {
++        av_register_all();
++    }
++};
+diff --git a/libnvpipeutil/util.c b/libnvpipeutil/util.c
+new file mode 100644
+index 0000000..5a41930
+--- /dev/null
++++ b/libnvpipeutil/util.c
+@@ -0,0 +1,45 @@
++/*
++ * Copyright (c) 2016 NVIDIA Corporation.  All rights reserved.
++ *
++ * NVIDIA Corporation and its licensors retain all intellectual
++ * property and proprietary rights in and to this software,
++ * related documentation and any modifications thereto.  Any use,
++ * reproduction, disclosure or distribution of this software and
++ * related documentation without an express license agreement from
++ * NVIDIA Corporation is strictly prohibited.
++ *
++ * TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SOFTWARE
++ * IS PROVIDED *AS IS* AND NVIDIA AND ITS SUPPLIERS DISCLAIM ALL
++ * WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED
++ * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
++ * PARTICULAR PURPOSE.  IN NO EVENT SHALL NVIDIA OR ITS SUPPLIERS BE
++ * LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL
++ * DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
++ * LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
++ * INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF
++ * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGES
++ */
++
++#include "nvpipe.h"
++
++
++nvpipecodec* nvpipe_create_codec( enum NVPipeCodecID id ) {
++    nvpipecodec* codec = NULL;
++    switch(id) {
++    case NVPIPE_CODEC_ID_CUVID:
++        codec = nvpipe_create_decoder_cuvid();
++    case NVPIPE_CODEC_ID_NVENC:
++        codec->codecPtr = nvpipe_create_encoder_nvenc();
++    }
++    
++    return codec;
++}
++
++int nvpipe_encode(nvpipecodec *codec, size_t* buffer_size) {
++    
++}
++
++int nvpipe_decode(nvpipecodec *codec, size_t* width, size_t* height) {
++    
++}
+diff --git a/nvpipe.h b/nvpipe.h
+new file mode 100644
+index 0000000..98b630f
+--- /dev/null
++++ b/nvpipe.h
+@@ -0,0 +1,84 @@
++/*
++ * Copyright (c) 2016 NVIDIA Corporation.  All rights reserved.
++ *
++ * NVIDIA Corporation and its licensors retain all intellectual
++ * property and proprietary rights in and to this software,
++ * related documentation and any modifications thereto.  Any use,
++ * reproduction, disclosure or distribution of this software and
++ * related documentation without an express license agreement from
++ * NVIDIA Corporation is strictly prohibited.
++ *
++ * TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SOFTWARE
++ * IS PROVIDED *AS IS* AND NVIDIA AND ITS SUPPLIERS DISCLAIM ALL
++ * WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED
++ * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
++ * PARTICULAR PURPOSE.  IN NO EVENT SHALL NVIDIA OR ITS SUPPLIERS BE
++ * LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL
++ * DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
++ * LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
++ * INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF
++ * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGES
++ */
++#pragma once
++
++#include <stdlib.h>
++#include <inttypes.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++typedef void (nvpipe_fptr_size2) (void*, size_t, size_t);
++typedef void (nvpipe_fptr_voidPtr) (void*, void*);
++typedef void (nvpipe_fptr_size) (void*, size_t);
++typedef void (nvpipe_fptr_void) (void*);
++
++typedef int (nvpipe_fptr_encode_frame) (void* codec, size_t* buffer_size);
++typedef int (nvpipe_fptr_decode_frame) (void* codec, size_t* width, size_t* height); 
++
++enum NVPipeCodecID {
++    NVPIPE_CODEC_ID_NULL,
++    NVPIPE_CODEC_ID_NVENC,
++    NVPIPE_CODEC_ID_CUVID
++};
+
+I would've expected a "codec" to be e.g. "h264", "h265", "vp8", etc.
+
++typedef struct _nvpipecodec {
++
++    enum NVPipeCodecID type;
++
++    nvpipe_fptr_decode_frame *decodeFnc;
++    nvpipe_fptr_encode_frame *encodeFnc;
++    nvpipe_fptr_size2 *setSize;
++    nvpipe_fptr_voidPtr *setPicturePtr;
++    nvpipe_fptr_voidPtr *setVideoPtr;
++    nvpipe_fptr_size *setBufferSize;
++    nvpipe_fptr_void *destroy;
+
+This is fine, but since you're using classes internally I would encourage this
+struct to be basically empty and not have methods at all.  Your implementation
+would just cast to the class type and then call methods as appropriate.
+
++    void *codecPtr;
++
++    void *videoPtr;
++    void *picturePtr;
++    size_t width;
++    size_t height;
++    size_t buffer;
++
++} nvpipecodec;
+
+You don't want to expose this to the user else you'll never be able to change
+it (Ulrich Drepper's "How to write shared libraries" goes into great detail,
+far too much detail for the present discussion).
+
++
++/*!
++
++ */
++nvpipecodec* nvpipe_create_codec(enum NVPipeCodecID);
+
+Ditto exposing the type.
+
+Do you need to know whether the object'll used for encoding or decoding inside
+the implementation of the factory method? i.e. at creation time.  If possible,
+it'd be preferable to not specify that a priori.  That would suggest simply
+specifying the codec (h264, h265 etc.) in the enum and leaving out the details.
+
++int nvpipe_encode(nvpipecodec *codec, size_t* buffer_size);
+
+This is going to need at least 2 buffers and 2 sizes: 1) the input buffer (an
+RGB image), 2) the output buffer
+
++int nvpipe_decode(nvpipecodec *codec, size_t* width, size_t* height);
+
+Ditto for input and output buffers.
+Actually we should talk about buffers again.  Is it possible to identify the
+size a frame will expand to in O(1), without disrupting the stream?
+
++
++/*!
++ */
++nvpipecodec* nvpipe_create_decoder_cuvid();
++nvpipecodec* nvpipe_create_encoder_nvenc();
+
+I would recommend you don't expose these to the user, only the factory method
+and enum.
++
++
++
++#ifdef __cplusplus
++}
++#endif
+diff --git a/nvpipe264wrapper.cxx b/nvpipe264wrapper.cxx
+new file mode 100644
+index 0000000..45af9b2
+--- /dev/null
++++ b/nvpipe264wrapper.cxx
+@@ -0,0 +1,90 @@
++/*
++ * Copyright (c) 2016 NVIDIA Corporation.  All rights reserved.
++ *
++ * NVIDIA Corporation and its licensors retain all intellectual
++ * property and proprietary rights in and to this software,
++ * related documentation and any modifications thereto.  Any use,
++ * reproduction, disclosure or distribution of this software and
++ * related documentation without an express license agreement from
++ * NVIDIA Corporation is strictly prohibited.
++ *
++ * TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SOFTWARE
++ * IS PROVIDED *AS IS* AND NVIDIA AND ITS SUPPLIERS DISCLAIM ALL
++ * WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED
++ * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
++ * PARTICULAR PURPOSE.  IN NO EVENT SHALL NVIDIA OR ITS SUPPLIERS BE
++ * LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL
++ * DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
++ * LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
++ * INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF
++ * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
++ * OF THE POSSIBILITY OF SUCH DAMAGES
++ */
++
++#include "nvpipe.h"
++#include "libnvpipecodec/nvpipedecodercuvid.h"
++#include "libnvpipecodec/nvpipeencodernvenc.h"
++
++static void
++setSize(void* codec, size_t width, size_t height ) {
++    
++}
+
+(and for the below)
+I would expect these should just be:
+
+  NvPipeCodec* cdc = static_cast<NvPipeCodec*>(codec);
+  cdc->theMethod(w, h, whatever);
+
+i.e. literally two lines for every method.
+
+... but as per comments above, i'm not sure you even want anything in
+this file: just use your C++ classes.
+
++static void
++setPicturePtr(void* codec, void* picture ) {
++    
++}
++
++static void
++setVideoPtr(void* codec, void* video ) {
++    
++}
++
++static void
++setBufferSize(void* codec, size_t buffer_size ) {
++
++}
++
++static void
++destroy(void* codec) {
++}
++
++static int
++encodeFnc (void* codec, size_t* buffer_size ) {
++    return 0;
++}
++
++static int
++decodeFnc (void* codec, size_t* width, size_t* height ) {
++    return 0;
++}
++
++nvpipecodec* nvpipe_create_encoder_nvenc() {
++    nvpipecodec* codec = (nvpipecodec*) calloc(sizeof(nvpipecodec),1);
++    codec->type = NVPipeCodecID::NVPIPE_CODEC_ID_CUVID;
++    codec->decodeFnc = decodeFnc;
++    codec->setSize = setSize;
++    codec->setPicturePtr = setPicturePtr;
++    codec->setVideoPtr = setVideoPtr;
++    codec->setBufferSize = setBufferSize;
++    codec->destroy = destroy;
++    
++    codec->codecPtr = new NvPipeDecoderCuvid();
++    
++    return codec;
++}
++
++nvpipecodec* nvpipe_create_decoder_cuvid() {
++    nvpipecodec* codec = (nvpipecodec*) calloc(sizeof(nvpipecodec),1);
++    codec->type = NVPipeCodecID::NVPIPE_CODEC_ID_NVENC;
++    codec->decodeFnc = decodeFnc;
++    codec->setSize = setSize;
++    codec->setPicturePtr = setPicturePtr;
++    codec->setVideoPtr = setVideoPtr;
++    codec->setBufferSize = setBufferSize;
++    codec->destroy = destroy;
++    
++    codec->codecPtr = new NvPipeEncoderNvenc();
++    
++    return codec;
++}
