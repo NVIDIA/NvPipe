@@ -22,20 +22,27 @@
  */
 #include "libnvpipecodec/nvpipecodec.h"
 
-void NvPipeCodec::setSize(size_t width, size_t height) {
+NvPipeCodec::NvPipeCodec() {
+    width_ = 0;
+    height_ = 0;
+    
+    frame_ = NULL;
+    frame_buffer_size_ = 0;
+    packet_ = NULL;
+    packet_buffer_size_ = 0;
+}
+
+void NvPipeCodec::setImageSize(size_t width, size_t height) {
     width_ = width;
     height_ = height;
 }
 
-void NvPipeCodec::setVideoPtr(void* video) {
-    video_ = video;
+void NvPipeCodec::setPacketBuffer(void* packet_buffer, size_t buffer_size) {
+    packet_ = packet_buffer;
+    packet_buffer_size_ = buffer_size;
 }
     
-void NvPipeCodec::setPicturePtr(void* picture) {
-    picture_ = picture;
+void NvPipeCodec::setFrameBuffer(void* frame_buffer, size_t buffer_size) {
+    frame_ = frame_buffer;
+    frame_buffer_size_ = buffer_size;
 }
-    
-void NvPipeCodec::setBufferSize(size_t buffer_size) {    
-    buffer_size_ = buffer_size;
-}
-    

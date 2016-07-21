@@ -23,60 +23,42 @@
 #pragma once
 
 #include <stdlib.h>
-#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef void (nvpipe_fptr_size2) (void*, size_t, size_t);
-typedef void (nvpipe_fptr_voidPtr) (void*, void*);
-typedef void (nvpipe_fptr_size) (void*, size_t);
-typedef void (nvpipe_fptr_void) (void*);
-
-typedef int (nvpipe_fptr_encode_frame) (void* codec, size_t* buffer_size);
-typedef int (nvpipe_fptr_decode_frame) (void* codec, size_t* width, size_t* height); 
-
 enum NVPipeCodecID {
     NVPIPE_CODEC_ID_NULL,
-    NVPIPE_CODEC_ID_NVENC,
-    NVPIPE_CODEC_ID_CUVID
+    NVPIPE_CODEC_ID_H264
 };
 
-typedef struct _nvpipecodec {
-
-    enum NVPipeCodecID type;
-
-    nvpipe_fptr_decode_frame *decodeFnc;
-    nvpipe_fptr_encode_frame *encodeFnc;
-    nvpipe_fptr_size2 *setSize;
-    nvpipe_fptr_voidPtr *setPicturePtr;
-    nvpipe_fptr_voidPtr *setVideoPtr;
-    nvpipe_fptr_size *setBufferSize;
-    nvpipe_fptr_void *destroy;
-
-    void *codecPtr;
-
-    void *videoPtr;
-    void *picturePtr;
-    size_t width;
-    size_t height;
-    size_t buffer;
-
-} nvpipecodec;
+typedef struct _nvpipe {
+    enum NVPipeCodecID type_;
+    void *codec_ptr_;
+} nvpipe;
 
 /*!
     API function calls
  */
-nvpipecodec* nvpipe_create_codec(enum NVPipeCodecID);
-int nvpipe_encode(nvpipecodec *codec, size_t* buffer_size);
-int nvpipe_decode(nvpipecodec *codec, size_t* width, size_t* height);
+nvpipe* nvpipe_create_instance(enum NVPipeCodecID);
+void nvpipe_destroy_instance( nvpipe *codec );
 
+int nvpipe_encode(  nvpipe *codec, 
+                    void *input_buffer, 
+                    void *output_buffer,
+                    size_t width,
+                    size_t height,
+                    size_t* buffer_size
+                    );
 
-/*!
- */
-nvpipecodec* nvpipe_create_decoder_cuvid();
-nvpipecodec* nvpipe_create_encoder_nvenc();
+int nvpipe_decode(  nvpipe *codec, 
+                    void *input_buffer, 
+                    void *output_buffer,
+                    size_t* width,
+                    size_t* height,
+                    size_t buffer_size
+                    );
 
 
 

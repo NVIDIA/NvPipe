@@ -35,11 +35,9 @@ include_directories(${CMAKE_SOURCE_DIR})
 set(NVPIPE "nvpipe")
 
 add_library(${NVPIPE}
-    ${CMAKE_SOURCE_DIR}/nvpipe264wrapper.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec.cxx
-    ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipedecodercuvid.cxx
-    ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipeencodernvenc.cxx
-    ${CMAKE_SOURCE_DIR}/libnvpipeutil/util.c
+    ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec264.cxx
+    ${CMAKE_SOURCE_DIR}/libnvpipeutil/util.cxx
 )
 
 # using pkg-config to get ffmpeg

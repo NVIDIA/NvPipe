@@ -22,33 +22,30 @@
  */
 #pragma once
 
-#include <inttypes.h>
-#include <stdlib.h>
+#include <cstdlib>
 
 
 class NvPipeCodec {
 public:
-    virtual void setSize(size_t width, size_t height);
-    
-    virtual void setPicturePtr(void* picture);
-    
-    virtual void setVideoPtr(void* video);
-    
-    virtual void setBufferSize(size_t buffer_size);
-    
-    virtual int encode(void* buffer, size_t &size)=0;
-    virtual int decode(void* picture, size_t &width, size_t &height)=0; // return number of picture acquired. 
-    
+    virtual void setImageSize(size_t width, size_t height);
+
+    virtual void setFrameBuffer(void* frame_buffer, size_t buffer_size);
+
+    virtual void setPacketBuffer(void* packet_buffer, size_t buffer_size);
+
+    virtual int encode(void* frame, size_t &size)=0;
+    virtual int decode(void* packet, size_t &width, size_t &height)=0; // return number of picture acquired. 
+
 protected:
-    NvPipeCodec() {};
-    
+    NvPipeCodec();
+
 private:
     size_t width_;
     size_t height_;
-    size_t buffer_size_;
-    
-    void* picture_;
-    
-    void* video_;
-    
+
+    void* frame_;
+    size_t frame_buffer_size_;
+    void* packet_;
+    size_t packet_buffer_size_;
+
 };

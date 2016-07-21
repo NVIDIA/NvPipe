@@ -22,14 +22,17 @@
  */
 #pragma once
 
-#include "libnvpipecodec/nvpipeencodernvenc.h"
-#include "libnvpipeutil/nvpipeffmpeginstance.h"
-#include <stdio.h>
+#include "libnvpipecodec/nvpipecodec264.h"
+#include <cstdio>
 
-NvPipeEncoderNvenc::NvPipeEncoderNvenc() {
-    printf("encoder nvenc created\n");
+NvPipeCodec264::NvPipeCodec264() {
+    printf("nv_codec_h264 created\n");
 }
 
-int NvPipeEncoderNvenc::encode(void* buffer, size_t &size) {
+int NvPipeCodec264::encode(void* buffer, size_t &size) {
     printf("encoding!");
+}
+
+int NvPipeCodec264::decode(void* picture, size_t &width, size_t &height) {
+    printf("decoding!");
 }

@@ -20,26 +20,34 @@
  * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGES
  */
+#pragma once
 
-#include "nvpipe.h"
+#include "libnvpipecodec/nvpipecodec.h"
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-nvpipecodec* nvpipe_create_codec( enum NVPipeCodecID id ) {
-    nvpipecodec* codec = NULL;
-    switch(id) {
-    case NVPIPE_CODEC_ID_CUVID:
-        codec = nvpipe_create_decoder_cuvid();
-    case NVPIPE_CODEC_ID_NVENC:
-        codec->codecPtr = nvpipe_create_encoder_nvenc();
-    }
-    
-    return codec;
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
+
+#ifdef __cplusplus
 }
+#endif
 
-int nvpipe_encode(nvpipecodec *codec, size_t* buffer_size) {
+class NvPipeCodec264 : public NvPipeCodec {
+public:
+    virtual int encode(void* buffer, size_t &size);
+    virtual int decode(void* picture, size_t &width, size_t &height);
     
-}
+    NvPipeCodec264();
+    ~NvPipeCodec264();
 
-int nvpipe_decode(nvpipecodec *codec, size_t* width, size_t* height) {
-    
-}
+protected:
+
+
+private:
+
+};
