@@ -32,22 +32,42 @@ extern "C"
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
+#include <libavutil/imgutils.h>
 
 #ifdef __cplusplus
 }
 #endif
 
 class NvPipeCodec264 : public NvPipeCodec {
+
 public:
     virtual int encode(void* buffer, size_t &size);
-    virtual int decode(void* picture, size_t &width, size_t &height);
-    
+    virtual int decode(void* picture, int &width, int &height, size_t &size);
+
+    virtual void setImageSize(  int width, 
+                                int height, 
+                                enum NVPipeImageFormat format);
+
+    virtual void setFrameBuffer(void* frame_buffer, size_t buffer_size);
+
     NvPipeCodec264();
     ~NvPipeCodec264();
 
 protected:
+    AVCodecContext *encoder_context_;
+    AVCodec *encoder_codec_;
+    AVFrame *encoder_frame_;
+    AVPacket encoder_packet_;
 
+    AVCodecContext *decoder_context_;
+    AVCodec *decoder_codec_;
+    AVFrame *decoder_frame_;
+    AVPacket decoder_packet_;
 
 private:
-
+    bool encoder_config_corrupted_;
+    
+    // Might not need this
+    bool decoder_config_corrupted_;
+    enum AVPixelFormat frame_pixel_format_;
 };

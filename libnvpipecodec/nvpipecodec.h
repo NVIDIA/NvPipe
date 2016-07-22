@@ -22,30 +22,33 @@
  */
 #pragma once
 
+#include "libnvpipeutil/format.h"
 #include <cstdlib>
 
 
 class NvPipeCodec {
 public:
-    virtual void setImageSize(size_t width, size_t height);
-
+    virtual void setImageSize(int width, int height, enum NVPipeImageFormat format);
+    
     virtual void setFrameBuffer(void* frame_buffer, size_t buffer_size);
 
     virtual void setPacketBuffer(void* packet_buffer, size_t buffer_size);
 
     virtual int encode(void* frame, size_t &size)=0;
-    virtual int decode(void* packet, size_t &width, size_t &height)=0; // return number of picture acquired. 
+    virtual int decode(void* packet, int &width, int &height, size_t &size)=0; // return number of picture acquired. 
 
 protected:
     NvPipeCodec();
 
-private:
-    size_t width_;
-    size_t height_;
+    int width_;
+    int height_;
+    enum NVPipeImageFormat format_;
 
     void* frame_;
     size_t frame_buffer_size_;
     void* packet_;
     size_t packet_buffer_size_;
+
+private:
 
 };

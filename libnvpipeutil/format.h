@@ -20,31 +20,26 @@
  * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGES
  */
-#include "libnvpipecodec/nvpipecodec.h"
 
-NvPipeCodec::NvPipeCodec() {
-    width_ = 0;
-    height_ = 0;
-    format_ = NVPIPE_IMAGE_FORMAT_NULL;
-    
-    frame_ = NULL;
-    frame_buffer_size_ = 0;
-    packet_ = NULL;
-    packet_buffer_size_ = 0;
-}
+#pragma once
 
-void NvPipeCodec::setImageSize(int width, int height, enum NVPipeImageFormat format) {
-    width_ = width;
-    height_ = height;
-    format_ = format;
-}
+#include <stdlib.h>
 
-void NvPipeCodec::setPacketBuffer(void* packet_buffer, size_t buffer_size) {
-    packet_ = packet_buffer;
-    packet_buffer_size_ = buffer_size;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum NVPipeCodecID {
+    NVPIPE_CODEC_ID_NULL,
+    NVPIPE_CODEC_ID_H264
+};
+
+enum NVPipeImageFormat {
+    NVPIPE_IMAGE_FORMAT_NULL,
+    NVPIPE_IMAGE_FORMAT_RGB,
+    NVPIPE_IMAGE_FORMAT_RGBA
+};
+
+#ifdef __cplusplus
 }
-    
-void NvPipeCodec::setFrameBuffer(void* frame_buffer, size_t buffer_size) {
-    frame_ = frame_buffer;
-    frame_buffer_size_ = buffer_size;
-}
+#endif

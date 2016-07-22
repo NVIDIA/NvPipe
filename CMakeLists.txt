@@ -79,7 +79,7 @@ if (PKG_CONFIG_FOUND)
   if (AVUTIL_FOUND)    
     target_link_libraries(${NVPIPE} ${AVUTIL_LIBRARIES})
   endif(AVUTIL_FOUND)
- 
+
 endif(PKG_CONFIG_FOUND)
 
 # some extra lib needed

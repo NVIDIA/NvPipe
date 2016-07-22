@@ -76,12 +76,13 @@ void nvpipe_destroy_instance( nvpipe *codec )
 }
 
 int nvpipe_encode(  nvpipe *codec, 
-                    void *input_buffer, 
+                    void *input_buffer,
+                    const size_t input_buffer_size,
                     void *output_buffer,
-                    const size_t width,
-                    const size_t height,
-                    size_t* buffer_size
-                    ) 
+                    size_t* output_buffer_size,
+                    const int width,
+                    const int height,
+                    enum NVPipeImageFormat format) 
 {
     
     if (codec == NULL)
@@ -90,30 +91,31 @@ int nvpipe_encode(  nvpipe *codec,
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
 
-    codec_ptr->setImageSize(width, height);
-    codec_ptr->setPacketBuffer(output_buffer, *buffer_size);
-    codec_ptr->encode(input_buffer, *buffer_size);
+    codec_ptr->setImageSize(width, height, format);
+    codec_ptr->setFrameBuffer(input_buffer, input_buffer_size);
+    codec_ptr->encode(output_buffer, *output_buffer_size);
 
     return 0;
 }
 
 int nvpipe_decode(  nvpipe *codec, 
-                    void *input_buffer, 
+                    void *input_buffer,
+                    size_t input_buffer_size,
                     void *output_buffer,
-                    size_t* width,
-                    size_t* height,
-                    size_t buffer_size
-                    )
+                    size_t output_buffer_size,
+                    int* width,
+                    int* height,
+                    enum NVPipeImageFormat format)
 {
     if (codec == NULL)
         return -1;
 
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
-
-    codec_ptr->setFrameBuffer(output_buffer, buffer_size);
-    codec_ptr->setImageSize(*width, *height);
-    codec_ptr->decode(input_buffer, *width, *height);
+    
+    codec_ptr->setImageSize(*width, *height, format);
+    codec_ptr->setPacketBuffer(input_buffer, input_buffer_size);
+    codec_ptr->decode(output_buffer, *width, *height, output_buffer_size);
 
     return 0;
 }

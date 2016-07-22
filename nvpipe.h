@@ -23,15 +23,11 @@
 #pragma once
 
 #include <stdlib.h>
+#include "libnvpipeutil/format.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-enum NVPipeCodecID {
-    NVPIPE_CODEC_ID_NULL,
-    NVPIPE_CODEC_ID_H264
-};
 
 typedef struct _nvpipe {
     enum NVPipeCodecID type_;
@@ -45,19 +41,23 @@ nvpipe* nvpipe_create_instance(enum NVPipeCodecID);
 void nvpipe_destroy_instance( nvpipe *codec );
 
 int nvpipe_encode(  nvpipe *codec, 
-                    void *input_buffer, 
+                    void *input_buffer,
+                    const size_t input_buffer_size,
                     void *output_buffer,
-                    size_t width,
-                    size_t height,
-                    size_t* buffer_size
+                    size_t* output_buffer_size,
+                    const int width,
+                    const int height,
+                    enum NVPipeImageFormat format
                     );
 
 int nvpipe_decode(  nvpipe *codec, 
-                    void *input_buffer, 
+                    void *input_buffer,
+                    const size_t input_buffer_size,
                     void *output_buffer,
-                    size_t* width,
-                    size_t* height,
-                    size_t buffer_size
+                    size_t output_buffer_size,
+                    int* width,
+                    int* height,
+                    enum NVPipeImageFormat format
                     );
 
 
