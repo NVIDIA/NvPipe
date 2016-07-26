@@ -29,6 +29,7 @@
 extern "C" {
 #endif
 
+
 typedef struct _nvpipe {
     enum NVPipeCodecID type_;
     void *codec_ptr_;
@@ -37,26 +38,75 @@ typedef struct _nvpipe {
 /*!
     API function calls
  */
+
+
+/*  create nvpipe instance
+ *      return a handle to the instance;
+ *      used to initiate nvpipe_encode/nvpipe_decode API call
+ */
 nvpipe* nvpipe_create_instance(enum NVPipeCodecID);
+
+/*  free nvpipe instance
+ *      clean up each instance created by nvpipe_create_instance();
+ */
+
 void nvpipe_destroy_instance( nvpipe *codec );
 
-int nvpipe_encode(  nvpipe *codec, 
+/*  encode picture(frame) to video(packet) 
+ *      User should provide pointer to both input and output buffer
+ * 
+ *      return 0 if success, otherwise, return < 0;
+ *          error message:
+ *              Not enough space, required space will be written to 
+ *              output_buffer_size
+ * 
+ *      Upon success, packet data will be copied to output_buffer.
+ *      The packet data size will be written to output_buffer_size.
+ */
+int nvpipe_encode(  
+                    // [in] handler to nvpipe instance
+                    nvpipe *codec, 
+                    // [in] pointer to picture buffer
                     void *input_buffer,
+                    // [in] picture buffer size
                     const size_t input_buffer_size,
+                    // [in] pointer to output packet buffer
                     void *output_buffer,
+                    // [in] available packet buffer
+                    // [out] packet data size
                     size_t* output_buffer_size,
-                    const int width,
+                    // [in] picture width/height (in pixels)
+                    const int width,                    
                     const int height,
+                    // [in] pixel format
                     enum NVPipeImageFormat format
                     );
 
-int nvpipe_decode(  nvpipe *codec, 
+/*  decode video(packet) to picture(frame)
+ *      User should provide pointer to both input and output buffer
+ * 
+ *      return 0 if success, otherwise, return < 0;
+ *          error message:
+ * 
+ *      Upon success, picture will be copied to output_buffer.
+ *      Retrieved image resolution will be set to width/height.
+ */
+int nvpipe_decode(  
+                    // [in] handler to nvpipe instance
+                    nvpipe *codec, 
+                    // [in] pointer to packet buffer
                     void *input_buffer,
+                    // [in] packet data size
                     const size_t input_buffer_size,
+                    // [in] pointer to output picture buffer
                     void *output_buffer,
+                    // [in] available output buffer size
                     size_t output_buffer_size,
+                    // [in] expected picture width/height (in pixels)
+                    // [out] retrived picture width/height (in pixels)
                     int* width,
                     int* height,
+                    // [in] pixel format
                     enum NVPipeImageFormat format
                     );
 

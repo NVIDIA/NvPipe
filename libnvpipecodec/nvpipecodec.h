@@ -30,12 +30,13 @@ class NvPipeCodec {
 public:
     virtual void setImageSize(int width, int height, enum NVPipeImageFormat format);
     
-    virtual void setFrameBuffer(void* frame_buffer, size_t buffer_size);
+    virtual void setInputFrameBuffer(void* frame_buffer, size_t buffer_size);
 
-    virtual void setPacketBuffer(void* packet_buffer, size_t buffer_size);
+    virtual void setInputPacketBuffer(void* packet_buffer, size_t buffer_size);
 
     virtual int encode(void* frame, size_t &size)=0;
-    virtual int decode(void* packet, int &width, int &height, size_t &size)=0; // return number of picture acquired. 
+    
+    virtual int decode(void* packet, int &width, int &height, size_t &size)=0; 
 
 protected:
     NvPipeCodec();
@@ -46,6 +47,7 @@ protected:
 
     void* frame_;
     size_t frame_buffer_size_;
+
     void* packet_;
     size_t packet_buffer_size_;
 

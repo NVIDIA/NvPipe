@@ -92,7 +92,7 @@ int nvpipe_encode(  nvpipe *codec,
                                 (codec->codec_ptr_);
 
     codec_ptr->setImageSize(width, height, format);
-    codec_ptr->setFrameBuffer(input_buffer, input_buffer_size);
+    codec_ptr->setInputFrameBuffer(input_buffer, input_buffer_size);
     codec_ptr->encode(output_buffer, *output_buffer_size);
 
     return 0;
@@ -114,7 +114,7 @@ int nvpipe_decode(  nvpipe *codec,
                                 (codec->codec_ptr_);
     
     codec_ptr->setImageSize(*width, *height, format);
-    codec_ptr->setPacketBuffer(input_buffer, input_buffer_size);
+    codec_ptr->setInputPacketBuffer(input_buffer, input_buffer_size);
     codec_ptr->decode(output_buffer, *width, *height, output_buffer_size);
 
     return 0;

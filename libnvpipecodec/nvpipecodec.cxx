@@ -39,12 +39,12 @@ void NvPipeCodec::setImageSize(int width, int height, enum NVPipeImageFormat for
     format_ = format;
 }
 
-void NvPipeCodec::setPacketBuffer(void* packet_buffer, size_t buffer_size) {
+void NvPipeCodec::setInputPacketBuffer(void* packet_buffer, size_t buffer_size) {
     packet_ = packet_buffer;
     packet_buffer_size_ = buffer_size;
 }
     
-void NvPipeCodec::setFrameBuffer(void* frame_buffer, size_t buffer_size) {
+void NvPipeCodec::setInputFrameBuffer(void* frame_buffer, size_t buffer_size) {
     frame_ = frame_buffer;
     frame_buffer_size_ = buffer_size;
 }

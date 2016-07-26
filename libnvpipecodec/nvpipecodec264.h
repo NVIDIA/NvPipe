@@ -29,6 +29,7 @@ extern "C"
 {
 #endif
 
+#include <libavutil/opt.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
@@ -48,7 +49,7 @@ public:
                                 int height, 
                                 enum NVPipeImageFormat format);
 
-    virtual void setFrameBuffer(void* frame_buffer, size_t buffer_size);
+    virtual void setInputFrameBuffer(void* frame_buffer, size_t buffer_size);
 
     NvPipeCodec264();
     ~NvPipeCodec264();
