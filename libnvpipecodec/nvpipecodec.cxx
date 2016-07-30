@@ -33,6 +33,10 @@ NvPipeCodec::NvPipeCodec() {
     packet_buffer_size_ = 0;
 }
 
+NvPipeCodec::~NvPipeCodec() {
+}
+
+
 void NvPipeCodec::setImageSize(int width, int height, enum NVPipeImageFormat format) {
     width_ = width;
     height_ = height;

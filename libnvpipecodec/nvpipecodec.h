@@ -40,6 +40,7 @@ public:
 
 protected:
     NvPipeCodec();
+    virtual ~NvPipeCodec();
 
     int width_;
     int height_;

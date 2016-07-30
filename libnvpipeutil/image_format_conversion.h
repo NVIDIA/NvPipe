@@ -20,49 +20,43 @@
  * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGES
  */
-
+ 
 #pragma once
 
-#include <stdlib.h>
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <helper_cuda.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-enum NVPipeCodecID {
-    NVPIPE_CODEC_ID_NULL,
-    NVPIPE_CODEC_ID_H264
-};
+typedef cudaError (*conversionFunctionPtr) (
+    int, int, CUdeviceptr, CUdeviceptr);
 
-enum NVPipeImageFormat {
-    NVPIPE_IMAGE_FORMAT_NULL,
-    NVPIPE_IMAGE_FORMAT_RGB,
-    NVPIPE_IMAGE_FORMAT_ARGB,
-    NVPIPE_IMAGE_FORMAT_YUV420P,
-    NVPIPE_IMAGE_FORMAT_YUV444P,
-    NVPIPE_IMAGE_FORMAT_NV12
-};
+cudaError launch_CudaARGB2NV12Process(  int w, int h, 
+                                        CUdeviceptr pARGBImage, 
+                                        CUdeviceptr pNV12Image);
 
-/*!
- *  NVPIPE_IMAGE_FORMAT_CONVERSION_X_TO_Y
- *  encoder:
- *      convert image from X to Y for encoding
- *  decoder:
- *      convert image from Y to X for decoding
- */
-enum NVPipeImageFormatConversion {
-    NVPIPE_IMAGE_FORMAT_CONVERSION_NULL,
-    NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12,
-    NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB,
-    NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB,
-    NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12
-};
+cudaError launch_CudaNV12TOARGBProcess(  int w, int h, 
+                                        CUdeviceptr pNV12Image, 
+                                        CUdeviceptr pARGBImage);
 
-int formatConversion( int w, int h, 
-                        void* imagePtrARGB, 
-                        void* imagPtrNV12,
-                        enum NVPipeImageFormatConversion );
+cudaError launch_CudaRGB2NV12Process(  int w, int h, 
+                                        CUdeviceptr pRGBImage, 
+                                        CUdeviceptr pNV12Image);
 
+cudaError launch_CudaNV12TORGBProcess(  int w, int h, 
+                                        CUdeviceptr pNV12Image, 
+                                        CUdeviceptr pRGBImage);
+
+cudaError launch_CudaNV12TORGBProcessDualChannel( int w, int h,
+                                        CUdeviceptr pYPlane,
+                                        CUdeviceptr pUVPlane,
+                                        CUdeviceptr pRGBImage);
+
+
+int formatConversionAVFrameRGB(AVFrame *frame, void *buffer);
 
 #ifdef __cplusplus
 }

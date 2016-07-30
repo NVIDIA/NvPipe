@@ -27,17 +27,21 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
-include_directories(${OPENGL_INCLUDE_DIR})
-include_directories(${MI_INCLUDE})
+#include_directories(${OPENGL_INCLUDE_DIR})
+#include_directories(${MI_INCLUDE})
 include_directories(${CMAKE_SOURCE_DIR})
 
 # AJ library
 set(NVPIPE "nvpipe")
 
-add_library(${NVPIPE}
+find_package(CUDA)
+
+#add_library(${NVPIPE}
+cuda_add_library(${NVPIPE}
     ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec264.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipeutil/util.cxx
+    ${CMAKE_SOURCE_DIR}/libnvpipeutil/kernels.cu
 )
 
 # using pkg-config to get ffmpeg

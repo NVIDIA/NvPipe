@@ -2,6 +2,77 @@
 #include <inttypes.h>
 #include "nvpipe.h"
 
+void SaveBufferNV12(uint8_t *data, int width, int height, char *str) {
+  FILE *pFile;
+  
+  pFile=fopen(str, "wb");
+  if(pFile==NULL)
+	return;
+
+  // Write header
+  fprintf(pFile, "P5\n%d %d\n255\n", width, height);
+
+  // Write pixel data
+  for(int y=0; y<height; y++)
+	fwrite(data+y*width, 1, width, pFile);
+  
+  // Close file
+  fclose(pFile);
+}
+
+void SaveBufferARGB(uint8_t *data, int width, int height, char *str) {
+  FILE *pFile;
+  
+  // Open file
+  pFile=fopen(str, "wb");
+  if(pFile==NULL)
+    return;
+  
+  // Write header
+  fprintf(pFile, "P6\n%d %d\n255\n", width, height);
+
+  uint8_t *row = malloc( sizeof(uint8_t) * width * 3 );
+
+  // Write pixel data
+  for(int y=0; y<height; y++) {
+    for (int x=0; x<width; x++) {
+      int index = x + y*width;
+      row[x*3] = data[index*4+1];
+      row[x*3+1] = data[index*4+2];
+      row[x*3+2] = data[index*4+3];
+    }
+    fwrite(row, 1, width*3, pFile);
+  }
+  
+  free (row);
+  // Close file
+  fclose(pFile);
+}
+
+
+void SaveBufferRGB(uint8_t *data, int width, int height, char *str) {
+  FILE *pFile;
+  
+  // Open file
+  pFile=fopen(str, "wb");
+  if(pFile==NULL)
+    return;
+  
+  // Write header
+  fprintf(pFile, "P6\n%d %d\n255\n", width, height);
+
+  uint8_t *row = malloc( sizeof(uint8_t) * width * 3 );
+
+  // Write pixel data
+  for(int y=0; y<height; y++) {
+    fwrite(data, 1, width*3, pFile);
+    data += width*3;
+  }
+  // Close file
+  fclose(pFile);
+}
+
+
 static void*
 pa_alloc(size_t sz) {
 	void* rv;
@@ -14,7 +85,7 @@ pa_alloc(size_t sz) {
 }
 
 
-void SaveBuffer(uint8_t *data, int width, int height, char *str) {
+void SaveBufferYUV420P(uint8_t *data, int width, int height, char *str) {
   FILE *pFile;
   char szFilename[32];
   int  y;
@@ -36,6 +107,25 @@ void SaveBuffer(uint8_t *data, int width, int height, char *str) {
   fclose(pFile);
 }
 
+
+void SaveBufferBit(uint8_t *data, int length, char *str) {
+  FILE *pFile;
+  char szFilename[32];
+  int  y;
+
+  // Open file
+  sprintf(szFilename, str);
+  pFile=fopen(szFilename, "wb");
+  if(pFile==NULL)
+	return;
+
+  fwrite(data, 1, length, pFile);
+  
+  // Close file
+  fclose(pFile);
+}
+
+
 static void pgm_save(unsigned char *buf, int wrap, int xsize, int ysize,
                      char *filename)
 {
@@ -50,8 +140,43 @@ static void pgm_save(unsigned char *buf, int wrap, int xsize, int ysize,
 
 
 int main( int argc, char* argv[] ) {
-    printf("hello world!\n");
 
+    /*
+    int width = 640;
+    int height = 480;
+    uint8_t* rgb_img_ptr = malloc(sizeof(uint8_t)*width*height*4);
+    uint8_t* nv12_img_ptr = malloc(sizeof(uint8_t)*width*height*3/2);
+
+    for ( int i = 0; i < 10; i++ ) {
+        for ( int y = 0; y < height; y++ ) {
+            for ( int x = 0; x < width; x++ ) {
+                int index = x + y * width;
+                rgb_img_ptr[index*4] = 0;
+                rgb_img_ptr[index*4+1] = x*2+y+i*12;//255;
+                rgb_img_ptr[index*4+2] = x+y+12;
+                rgb_img_ptr[index*4+3] = x+y*2+i*2;
+            }
+        }
+        SaveBufferARGB(rgb_img_ptr, width, height, "original_rgb.pgm");
+        formatConversion(width, height, rgb_img_ptr, 
+                        nv12_img_ptr, NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12);
+        
+        SaveBufferNV12(nv12_img_ptr, width, height, "nv12.pgm");
+        
+        //formatConversion(width, height, nv12_img_ptr, 
+        //                rgb_img_ptr, NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB);
+        formatConversion(width, height, nv12_img_ptr, 
+                        rgb_img_ptr, NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB);
+        
+        SaveBufferRGB(rgb_img_ptr, width, height, "decoded_rgb.pgm");
+    }
+    free (rgb_img_ptr);
+    free (nv12_img_ptr);
+    return 0;
+    */    
+    
+    
+    /*
     nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
 
     int width=640;
@@ -77,39 +202,120 @@ int main( int argc, char* argv[] ) {
         
         pkt_buffer_size = buffer_size;
         img_buffer_size = buffer_size;
-        
-        width = 640;
-        height = 480;
-    
+
+        if ( i < 10 ) {
+            width = 640;
+            height = 480;
+        } else {
+            width = 320;
+            height = 240;
+        }
+
         for(size_t y=0;y<height;y++) {
             for(size_t x=0;x<width;x++) {
                     img_ptr0[y * width + x] = (x + y + i*10);
             }
         }
+ 
+        for(size_t y=0;y<height/2;y++) {
+            for(size_t x=0;x<width/2;x++) {
+                img_ptr1[y * gap1 + x] = 128 + y;
+                img_ptr2[y * gap2 + x] = 64 + x;
+            }
+    }*/
+    
+    
 
-            /* Cb and Cr */
-            for(size_t y=0;y<height/2;y++) {
-                for(size_t x=0;x<width/2;x++) {
-                    img_ptr1[y * gap1 + x] = 128 + y;
-                    img_ptr2[y * gap2 + x] = 64 + x;
+    nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
+    nvpipe* codec2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
+    int width=640;
+    int height=480;
+    size_t buffer_size = sizeof(uint8_t)*width*height*3;
+    void* img_buffer = malloc(buffer_size);
+    //void* img_buffer = pa_alloc(buffer_size);
+    size_t img_buffer_size = buffer_size;
+    uint8_t* img_ptr0 = img_buffer;
+
+    //void* pkt_buffer = pa_alloc(buffer_size);
+    void* pkt_buffer = malloc(buffer_size);
+    size_t pkt_buffer_size = buffer_size;
+
+    for ( int i = 0; i < 4; i++ ) {
+
+        pkt_buffer_size = buffer_size;
+        img_buffer_size = buffer_size;
+
+        //if ( i < 10 ) {
+        if ( 1 ) {
+            width = 640;
+            height = 480;
+        } else {
+            width = 320;
+            height = 240;
+        }
+
+        for(size_t y=0;y<height;y++) {
+            for(size_t x=0;x<width;x++) {
+                int index = y * width + x;
+                img_ptr0[index*3] = (x + y + i*10);
+                img_ptr0[index*3+1] = 128 + y + i *15;
+                img_ptr0[index*3+2] = 64 + x;
             }
         }
-        
+
         char str[15];
         sprintf(str, "encoded_file%d.pgm", i);
-        SaveBuffer(img_buffer, width, height, str);
+        SaveBufferRGB(img_buffer, width, height, str);
+        nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGB);
+
+        uint8_t* pkt_ptr = pkt_buffer;
+        pkt_ptr += pkt_buffer_size;
+        pkt_ptr[0] = 0;
+        pkt_ptr[1] = 0;
+        pkt_ptr[2] = 1;
+        pkt_ptr[3] = 9;
+        pkt_ptr[4] = 0;
+        pkt_ptr[5] = 0;
+        pkt_ptr[6] = 0;
+        pkt_ptr[7] = 1;
+        pkt_ptr[8] = 9;
+        pkt_ptr[9] = 0;
+        pkt_buffer_size += 10;
         
-        nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_YUV420P);
-        
-        if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_YUV420P) != 0 ) {
+        //if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGB) == 0 ) {
+        //if (nvpipe_decode(codec2, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_NV12) == 0 ) {
+        if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_NV12) == 0 ) {
             sprintf(str, "decoded_file%d.pgm", i);
-            SaveBuffer(img_buffer, width, height, str);
-            printf("Next\n");
+            //SaveBufferRGB(img_buffer, width, height, str);
+            SaveBufferNV12(img_buffer, width, height, str);
+            
+            formatConversion(width, height, img_buffer, pkt_buffer, NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB);
+            sprintf(str, "decoded_file_conv%d.pgm", i);
+            SaveBufferRGB(pkt_buffer, width, height, str);
+
+        } else {
+            printf("decoding frame not written to file: %d\n", i);
         }
+        
+        //printf("decoding dimension: %d, %d", width, height);
 
     }
-    nvpipe_destroy_instance(codec);
     
+    // grab the last frame
+    //
+    //if (nvpipe_decode(codec, NULL, 0, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_YUV420P) == 0 ) {
+        //char str[15];
+        //printf("decoding frame: %d\n", 20);
+        //sprintf(str, "decoded_file%d.pgm", 20);
+        //SaveBuffer(img_buffer, width, height, str);
+        //printf("Next\n");
+    //} else {
+        //printf("decoding frame not written to file: %d\n", 20);
+    //}
+
+    nvpipe_destroy_instance(codec);
+    nvpipe_destroy_instance(codec2);
+
     free(img_buffer);
     free(pkt_buffer);
 
