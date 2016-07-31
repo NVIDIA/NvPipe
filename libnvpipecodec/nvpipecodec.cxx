@@ -25,7 +25,8 @@
 NvPipeCodec::NvPipeCodec() {
     width_ = 0;
     height_ = 0;
-    format_ = NVPIPE_IMAGE_FORMAT_NULL;
+    encoder_format_ = NVPIPE_IMAGE_FORMAT_NULL;
+    decoder_format_ = NVPIPE_IMAGE_FORMAT_NULL;
     
     frame_ = NULL;
     frame_buffer_size_ = 0;
@@ -34,20 +35,19 @@ NvPipeCodec::NvPipeCodec() {
 }
 
 NvPipeCodec::~NvPipeCodec() {
+
 }
 
-
-void NvPipeCodec::setImageSize(int width, int height, enum NVPipeImageFormat format) {
+void NvPipeCodec::setImageSize(int width, int height) {
     width_ = width;
     height_ = height;
-    format_ = format;
 }
 
 void NvPipeCodec::setInputPacketBuffer(void* packet_buffer, size_t buffer_size) {
     packet_ = packet_buffer;
     packet_buffer_size_ = buffer_size;
 }
-    
+
 void NvPipeCodec::setInputFrameBuffer(void* frame_buffer, size_t buffer_size) {
     frame_ = frame_buffer;
     frame_buffer_size_ = buffer_size;

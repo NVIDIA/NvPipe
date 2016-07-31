@@ -38,9 +38,8 @@ NvPipeCodec264::NvPipeCodec264() {
     decoder_codec_ = NULL;
     decoder_frame_ = NULL;
     
-    frame_pixel_format_ = AV_PIX_FMT_RGB24; 
+    encoder_frame_pixel_format_ = AV_PIX_FMT_RGB24; 
     
-    // doesn't really matter
     encoder_config_corrupted_ = true;
     decoder_config_corrupted_ = true;
     
@@ -88,97 +87,45 @@ NvPipeCodec264::~NvPipeCodec264() {
 
 }
 
-void NvPipeCodec264::setImageSize(   int width,
-                                int height,
-                                enum NVPipeImageFormat format ) {
-
+void NvPipeCodec264::setImageSize( int width, int height) {
     if ( width != width_ || height != height_ ) {
         encoder_config_corrupted_ = true;
         decoder_config_corrupted_ = true;
     }
-
-    if ( format != format_ ) {
-        switch( format ) {
-        case NVPIPE_IMAGE_FORMAT_ARGB:
-            if ( frame_pixel_format_ != AV_PIX_FMT_NV12 ) {
-                encoder_config_corrupted_ = true;
-                decoder_config_corrupted_ = true;
-                frame_pixel_format_ = AV_PIX_FMT_NV12;
-                encoder_conversion_flag_ = 
-                    NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12;
-                decoder_conversion_flag_ = 
-                    NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB;
-            }
-            break;
-
-        case NVPIPE_IMAGE_FORMAT_RGB:
-            if ( frame_pixel_format_ != AV_PIX_FMT_NV12 ) {
-                encoder_config_corrupted_ = true;
-                decoder_config_corrupted_ = true;
-                frame_pixel_format_ = AV_PIX_FMT_NV12;
-                encoder_conversion_flag_ = 
-                    NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12;
-                decoder_conversion_flag_ = 
-                    NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB;
-            }
-            break;
-
-        case NVPIPE_IMAGE_FORMAT_YUV420P:
-            if ( frame_pixel_format_ != AV_PIX_FMT_YUV420P ) {
-                encoder_config_corrupted_ = true;
-                decoder_config_corrupted_ = true;
-                frame_pixel_format_ = AV_PIX_FMT_YUV420P;
-                encoder_conversion_flag_ = 
-                    NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
-                decoder_conversion_flag_ = 
-                    NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
-            }
-            break;
-
-        case NVPIPE_IMAGE_FORMAT_YUV444P:
-            if ( frame_pixel_format_ != AV_PIX_FMT_YUV444P ) {
-                encoder_config_corrupted_ = true;
-                decoder_config_corrupted_ = true;
-                frame_pixel_format_ = AV_PIX_FMT_YUV444P;
-                encoder_conversion_flag_ = 
-                    NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
-                decoder_conversion_flag_ = 
-                    NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
-            }
-            break;
-
-        default:
-            printf("unrecognized pixel format, set to NV12 as default");
-        case NVPIPE_IMAGE_FORMAT_NV12:
-            encoder_conversion_flag_ = 
-                NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
-            decoder_conversion_flag_ = 
-                NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
-            frame_pixel_format_ = AV_PIX_FMT_NV12;
-            break;
-        }
-    }
-    NvPipeCodec::setImageSize(width, height, format);
+    NvPipeCodec::setImageSize(width, height);
 }
 
 void NvPipeCodec264::setInputFrameBuffer(   void* frame_buffer, 
                                             size_t buffer_size)
 {
-    if ( frame_buffer != frame_ || buffer_size != frame_buffer_size_ ) {
+    if ( frame_buffer != frame_ ) {
         encoder_config_corrupted_ = true;
+        NvPipeCodec::setInputFrameBuffer(frame_buffer, buffer_size);
+    } else if ( buffer_size != frame_buffer_size_ ) {
         NvPipeCodec::setInputFrameBuffer(frame_buffer, buffer_size);
     }
 }
 
-int NvPipeCodec264::encode(void* buffer, size_t &output_buffer_size) {
+int NvPipeCodec264::encode( void* buffer, 
+                            size_t &output_buffer_size,
+                            enum NVPipeImageFormat format) {
 
-    if (width_ == 0 || height_ == 0 
-        || format_ == NVPIPE_IMAGE_FORMAT_NULL ) {
+    int result = 0;
+
+    if (width_ == 0 || height_ == 0 ) {
             printf("input frame has to be defined \
                     before calling NvPipeCodec264::encoding");
             return -1;
     }
-    
+
+    if (format != encoder_format_) {
+        getFormatConversionEnum(    format, true,
+                                    encoder_conversion_flag_,
+                                    encoder_frame_pixel_format_);
+        encoder_config_corrupted_ = true;
+        encoder_format_ = format;
+    }
+
     // Check if encoder codec has been initialized
     if (encoder_codec_ == NULL) {
         encoder_codec_ = 
@@ -209,11 +156,10 @@ int NvPipeCodec264::encode(void* buffer, size_t &output_buffer_size) {
         // frames per second
         encoder_context_->time_base = (AVRational){1,25};
         encoder_context_->gop_size = std::numeric_limits<int>::max();
-        //encoder_context_->gop_size = 4;
         encoder_context_->max_b_frames = 0;
         encoder_context_->width = width_;
         encoder_context_->height = height_;
-        encoder_context_->pix_fmt = frame_pixel_format_;
+        encoder_context_->pix_fmt = encoder_frame_pixel_format_;
         // nvenc private setting
         av_opt_set(encoder_context_->priv_data,
                     "preset", "llhq", 0);
@@ -224,7 +170,7 @@ int NvPipeCodec264::encode(void* buffer, size_t &output_buffer_size) {
         av_opt_set_int(encoder_context_->priv_data, "delay", 0, 0);
 
 
-        encoder_frame_->format = frame_pixel_format_;
+        encoder_frame_->format = encoder_frame_pixel_format_;
         encoder_frame_->width = width_;
         encoder_frame_->height = height_;
 
@@ -243,15 +189,16 @@ int NvPipeCodec264::encode(void* buffer, size_t &output_buffer_size) {
         printf("encoder corrupted\n");
         encoder_context_->width = width_;
         encoder_context_->height = height_;
-        encoder_context_->pix_fmt = frame_pixel_format_;
+        encoder_context_->pix_fmt = encoder_frame_pixel_format_;
         
-        encoder_frame_->format = frame_pixel_format_;
+        encoder_frame_->format = encoder_frame_pixel_format_;
         encoder_frame_->width = width_;
         encoder_frame_->height = height_;
 
         const uint8_t* frame_image_ptr;
         size_t num_pixels = width_;
         num_pixels *= height_;
+
         switch ( encoder_conversion_flag_ ) {
             case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
             case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
@@ -280,7 +227,7 @@ int NvPipeCodec264::encode(void* buffer, size_t &output_buffer_size) {
         if ( av_image_fill_arrays ( encoder_frame_->data, 
                                     encoder_frame_->linesize,
                                     frame_image_ptr, 
-                                    frame_pixel_format_,
+                                    encoder_frame_pixel_format_,
                                     width_,
                                     height_,
                                     64 ) < 0 ) {
@@ -289,6 +236,7 @@ int NvPipeCodec264::encode(void* buffer, size_t &output_buffer_size) {
         }
         encoder_config_corrupted_ = false;
     }
+
     switch ( encoder_conversion_flag_ ) {
     case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
@@ -299,11 +247,11 @@ int NvPipeCodec264::encode(void* buffer, size_t &output_buffer_size) {
     default:
         break;
     }
+
     av_init_packet(&encoder_packet_);
     encoder_packet_.data = NULL;
     encoder_packet_.size = 0;
     int ret = avcodec_send_frame(encoder_context_, encoder_frame_);
-
     // debug information (remove before release)
     if ( ret < 0 ){
         printf("\nreceive_packet went wrong! %d\n", ret);
@@ -343,27 +291,29 @@ int NvPipeCodec264::encode(void* buffer, size_t &output_buffer_size) {
         }
     }
 
-    if ( encoder_packet_.size > output_buffer_size ) {
-        output_buffer_size = encoder_packet_.size;
-        av_packet_unref(&encoder_packet_);
-        printf("packet size larger than  buffer_size went wrong!");
-        return -1;
+    if ( encoder_packet_.size < output_buffer_size - 10 ) {
+        memcpy(buffer, encoder_packet_.data, encoder_packet_.size);
+        appendDummyNAL(buffer, encoder_packet_.size);
+        result = -1;
+    } else {
+        printf("packet size larger than  buffer_size went wrong!\n");
     }
-    memcpy(buffer, encoder_packet_.data, encoder_packet_.size);
-    // output the packet size;
-    output_buffer_size = encoder_packet_.size;
 
+    // output the packet size;
+    output_buffer_size = encoder_packet_.size + 10;
     av_packet_unref(&encoder_packet_);
-    //avcodec_flush_buffers(encoder_context_);
-    
-    return 0;
+
+    return result;
 }
 
 int NvPipeCodec264::decode( void* output_picture, 
                             int &width, 
                             int &height, 
-                            size_t &output_size)
-{
+                            size_t &output_size,
+                            enum NVPipeImageFormat format ) {
+
+    enum AVPixelFormat pixel_format;
+
     // Check if decoder codec has been initialized
     if (decoder_codec_ == NULL) {
         decoder_codec_ = 
@@ -385,13 +335,19 @@ int NvPipeCodec264::decode( void* output_picture,
             printf("cannot allocate frame");
             return -1;
         }
-        
+
+        decoder_context_->delay = 0;
+
         decoder_config_corrupted_ = true;
     }
 
+    getFormatConversionEnum(format,
+                            false,
+                            decoder_conversion_flag_,
+                            pixel_format);
+
     if ( decoder_config_corrupted_ ) {
         printf("decoder corrupted\n");
-        decoder_context_->delay = 0;
         if (avcodec_open2(decoder_context_, 
                             decoder_codec_, NULL) < 0) {
             printf("cannot open codec\n");
@@ -411,7 +367,6 @@ int NvPipeCodec264::decode( void* output_picture,
 
     int ret = avcodec_receive_frame( decoder_context_,
                                     decoder_frame_);
-
     // debug information (remove before release)
     if ( ret < 0 ){
         printf("\nreceive_frame went wrong! %d\n", ret);
@@ -434,7 +389,8 @@ int NvPipeCodec264::decode( void* output_picture,
     size_t frameSize;
     width = decoder_frame_->width;
     height = decoder_frame_->height;
-    
+
+    // should really check the decoder_frame_->format
     switch ( decoder_conversion_flag_ ) {
     case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB:
         frameSize = width;
@@ -443,7 +399,6 @@ int NvPipeCodec264::decode( void* output_picture,
         break;
 
     case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB:
-        printf("COPY OUT RGB\n");
         frameSize = width;
         frameSize *= height;
         frameSize *= 3;
@@ -462,7 +417,6 @@ int NvPipeCodec264::decode( void* output_picture,
 
     default:
         frameSize = 0;
-        printf("COPY OUT NV12\n");
         for ( int i = 0; i < AV_NUM_DATA_POINTERS; i++ ) {
             if ( decoder_frame_->linesize[i] > 0 ) {
                 frameSize += decoder_frame_->height*decoder_frame_->linesize[i];
@@ -508,4 +462,59 @@ int NvPipeCodec264::decode( void* output_picture,
                     decoder_conversion_flag_);
     av_packet_unref(&decoder_packet_);
     return 0;
+}
+
+int NvPipeCodec264::getFormatConversionEnum(
+            enum NVPipeImageFormat format,
+            bool encoder_flag,
+            enum NVPipeImageFormatConversion &conversion_flag,
+            enum AVPixelFormat &pixel_format) 
+{
+    switch( format ) {
+    case NVPIPE_IMAGE_FORMAT_ARGB:
+        pixel_format = AV_PIX_FMT_NV12;
+        conversion_flag = encoder_flag ?
+            NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12 :
+            NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB;
+        break;
+
+    case NVPIPE_IMAGE_FORMAT_RGB:
+        pixel_format = AV_PIX_FMT_NV12;
+        conversion_flag = encoder_flag ?
+            NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12 :
+            NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB;
+        break;
+
+    case NVPIPE_IMAGE_FORMAT_YUV420P:
+        pixel_format = AV_PIX_FMT_YUV420P;
+        conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
+        break;
+
+    case NVPIPE_IMAGE_FORMAT_YUV444P:
+        pixel_format = AV_PIX_FMT_YUV444P;
+        conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
+        break;
+
+    default:
+        printf("unrecognized pixel format, set to NV12 as default");
+    case NVPIPE_IMAGE_FORMAT_NV12:
+        pixel_format = AV_PIX_FMT_NV12;
+        conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
+        break;
+    }
+}
+
+void NvPipeCodec264::appendDummyNAL(void* buffer, size_t offset) {
+    uint8_t* pkt_ptr = (uint8_t*)buffer;
+    pkt_ptr += offset;
+    pkt_ptr[0] = 0;
+    pkt_ptr[1] = 0;
+    pkt_ptr[2] = 1;
+    pkt_ptr[3] = 9;
+    pkt_ptr[4] = 0;
+    pkt_ptr[5] = 0;
+    pkt_ptr[6] = 0;
+    pkt_ptr[7] = 1;
+    pkt_ptr[8] = 9;
+    pkt_ptr[9] = 0;
 }

@@ -267,7 +267,7 @@ int main( int argc, char* argv[] ) {
         sprintf(str, "encoded_file%d.pgm", i);
         SaveBufferRGB(img_buffer, width, height, str);
         nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGB);
-
+/*
         uint8_t* pkt_ptr = pkt_buffer;
         pkt_ptr += pkt_buffer_size;
         pkt_ptr[0] = 0;
@@ -281,7 +281,7 @@ int main( int argc, char* argv[] ) {
         pkt_ptr[8] = 9;
         pkt_ptr[9] = 0;
         pkt_buffer_size += 10;
-        
+ */
         //if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGB) == 0 ) {
         //if (nvpipe_decode(codec2, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_NV12) == 0 ) {
         if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_NV12) == 0 ) {

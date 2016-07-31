@@ -41,16 +41,17 @@ extern "C"
 class NvPipeCodec264 : public NvPipeCodec {
 
 public:
-    virtual int encode(void* buffer, size_t &size);
+    virtual int encode( void* buffer,
+                        size_t &size,
+                        enum NVPipeImageFormat format);
     
     virtual int decode( void* picture, 
                         int &width, 
                         int &height, 
-                        size_t &size);
+                        size_t &size,
+                        enum NVPipeImageFormat format);
 
-    virtual void setImageSize(  int width, 
-                                int height, 
-                                enum NVPipeImageFormat format);
+    virtual void setImageSize( int width, int height);
 
     virtual void setInputFrameBuffer(   void* frame_buffer, 
                                         size_t buffer_size);
@@ -71,7 +72,17 @@ protected:
 
 private:
 
+    int getFormatConversionEnum(
+            enum NVPipeImageFormat format,
+            bool encoder_flag,
+            enum NVPipeImageFormatConversion &conversion_flag,
+            enum AVPixelFormat &pixel_format);
+
+    // append 2 dummy access delimiter NAL at the end.
+    void appendDummyNAL(void* buffer, size_t offset);
+
     bool encoder_config_corrupted_;
+    bool decoder_config_corrupted_;
 
     // not the best implementation.
     enum NVPipeImageFormatConversion encoder_conversion_flag_;
@@ -80,7 +91,6 @@ private:
 
     enum NVPipeImageFormatConversion decoder_conversion_flag_;
 
-    // Might not need this
-    bool decoder_config_corrupted_;
-    enum AVPixelFormat frame_pixel_format_;
+    enum AVPixelFormat encoder_frame_pixel_format_;
+
 };
