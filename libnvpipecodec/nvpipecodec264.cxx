@@ -29,7 +29,7 @@
 
 NvPipeCodec264::NvPipeCodec264() {
     //printf("nv_codec_h264 created\n");
-    
+
     encoder_context_ = NULL;
     encoder_codec_ = NULL;
     encoder_frame_ = NULL;
@@ -37,15 +37,15 @@ NvPipeCodec264::NvPipeCodec264() {
     decoder_context_ = NULL;
     decoder_codec_ = NULL;
     decoder_frame_ = NULL;
-    
+
     encoder_frame_pixel_format_ = AV_PIX_FMT_RGB24; 
-    
+
     encoder_config_corrupted_ = true;
     decoder_config_corrupted_ = true;
-    
+
     encoder_conversion_flag_ = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
     decoder_conversion_flag_ = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
-    
+
     encoder_converted_image_buffer_ = NULL;
     encoder_converted_image_buffer_size_ = 0;
 
@@ -152,10 +152,16 @@ int NvPipeCodec264::encode( void* buffer,
          * Default low latency setup for nvenc
          */
         // put bit_rate
-        encoder_context_->bit_rate = 400000;
+        if ( !bitrate_overwrite_flag_ ) {
+            bitrate_ = width_;
+            bitrate_ *= height_;
+            bitrate_ *= framerate_;
+            bitrate_ *= 0.07;
+        }
+        encoder_context_->bit_rate = bitrate_;
         // frames per second
-        encoder_context_->time_base = (AVRational){1,25};
-        encoder_context_->gop_size = std::numeric_limits<int>::max();
+        encoder_context_->time_base = (AVRational){1,framerate_};
+        encoder_context_->gop_size = gop_size_;
         encoder_context_->max_b_frames = 0;
         encoder_context_->width = width_;
         encoder_context_->height = height_;
@@ -186,7 +192,14 @@ int NvPipeCodec264::encode( void* buffer,
 
     // Check if encoder frame parameter has been updated
     if (encoder_config_corrupted_) {
-        printf("encoder corrupted\n");
+        //printf("encoder configuring...\n");
+        if ( !bitrate_overwrite_flag_ ) {
+            bitrate_ = width_;
+            bitrate_ *= height_;
+            bitrate_ *= framerate_;
+            bitrate_ *= 0.07;
+        }
+        encoder_context_->bit_rate = bitrate_;
         encoder_context_->width = width_;
         encoder_context_->height = height_;
         encoder_context_->pix_fmt = encoder_frame_pixel_format_;
@@ -208,7 +221,7 @@ int NvPipeCodec264::encode( void* buffer,
                         printf("free format conversion buffer in encoder");
                         free( encoder_converted_image_buffer_ );
                     }
-                    
+
                     encoder_converted_image_buffer_size_=num_pixels*3/2;
                     encoder_converted_image_buffer_ = (void*) 
                                 malloc ( sizeof(uint8_t) * 
@@ -251,6 +264,7 @@ int NvPipeCodec264::encode( void* buffer,
     av_init_packet(&encoder_packet_);
     encoder_packet_.data = NULL;
     encoder_packet_.size = 0;
+
     int ret = avcodec_send_frame(encoder_context_, encoder_frame_);
     // debug information (remove before release)
     if ( ret < 0 ){
@@ -347,7 +361,7 @@ int NvPipeCodec264::decode( void* output_picture,
                             pixel_format);
 
     if ( decoder_config_corrupted_ ) {
-        printf("decoder corrupted\n");
+        //printf("decoder configuring...\n");
         if (avcodec_open2(decoder_context_, 
                             decoder_codec_, NULL) < 0) {
             printf("cannot open codec\n");

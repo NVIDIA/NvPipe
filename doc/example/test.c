@@ -240,13 +240,14 @@ int main( int argc, char* argv[] ) {
     void* pkt_buffer = malloc(buffer_size);
     size_t pkt_buffer_size = buffer_size;
 
-    for ( int i = 0; i < 4; i++ ) {
+    for ( int i = 0; i < 10; i++ ) {
 
         pkt_buffer_size = buffer_size;
         img_buffer_size = buffer_size;
 
-        //if ( i < 10 ) {
-        if ( 1 ) {
+        //if ( i < 6 ) {
+        if ( i > 0 ) {
+        //if ( 1 ) {
             width = 640;
             height = 480;
         } else {
@@ -264,7 +265,10 @@ int main( int argc, char* argv[] ) {
         }
 
         char str[15];
-        sprintf(str, "encoded_file%d.pgm", i);
+        
+        int num = i % 100;
+        
+        sprintf(str, "encoded_file%d.pgm", num);
         SaveBufferRGB(img_buffer, width, height, str);
         nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGB);
 /*
@@ -282,16 +286,16 @@ int main( int argc, char* argv[] ) {
         pkt_ptr[9] = 0;
         pkt_buffer_size += 10;
  */
-        //if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGB) == 0 ) {
+        if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGB) == 0 ) {
         //if (nvpipe_decode(codec2, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_NV12) == 0 ) {
-        if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_NV12) == 0 ) {
+        //if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_NV12) == 0 ) {
             sprintf(str, "decoded_file%d.pgm", i);
-            //SaveBufferRGB(img_buffer, width, height, str);
-            SaveBufferNV12(img_buffer, width, height, str);
+            SaveBufferRGB(img_buffer, width, height, str);
+            //SaveBufferNV12(img_buffer, width, height, str);
             
-            formatConversion(width, height, img_buffer, pkt_buffer, NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB);
-            sprintf(str, "decoded_file_conv%d.pgm", i);
-            SaveBufferRGB(pkt_buffer, width, height, str);
+            //formatConversion(width, height, img_buffer, pkt_buffer, NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB);
+            //sprintf(str, "decoded_file_conv%d.pgm", i);
+            //SaveBufferRGB(pkt_buffer, width, height, str);
 
         } else {
             printf("decoding frame not written to file: %d\n", i);

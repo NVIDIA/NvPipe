@@ -35,10 +35,10 @@ typedef struct _nvpipe {
     void *codec_ptr_;
 } nvpipe;
 
-/*!
-    API function calls
- */
-
+/************************************************************
+ *     API function calls
+ *
+ ************************************************************/
 
 /*  create nvpipe instance
  *      return a handle to the instance;
@@ -109,6 +109,24 @@ int nvpipe_decode(
                     // [in] pixel format
                     enum NVPipeImageFormat format
                     );
+
+/*  set bitrate used for encoder
+ *      bitrate = 0 to enable automatic adjust bitrate
+ *          [image width] x [image height] x [framerate] x 0.07
+ *
+ *  guideline for bitrate adjustment:
+ *  [image width] x [image height] x [framerate] x [motion rank] x 0.07
+ *      [motion rank]:  1 being low motion;
+ *                      2 being medium motion;
+ *                      4 being high motion;
+ *  source:
+ *      http://www.adobe.com/content/dam/Adobe/en/devnet/
+ *           video/articles/h264_primer/h264_primer.pdf
+ */
+int nvpipe_set_bitrate(
+                        nvpipe *codec,
+                        int64_t bitrate
+                        );
 
 
 

@@ -55,7 +55,6 @@ cudaError launch_CudaNV12TORGBProcessDualChannel( int w, int h,
                                         CUdeviceptr pUVPlane,
                                         CUdeviceptr pRGBImage);
 
-
 int formatConversionAVFrameRGB(AVFrame *frame, void *buffer);
 
 #ifdef __cplusplus

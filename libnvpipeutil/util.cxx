@@ -76,6 +76,16 @@ void nvpipe_destroy_instance( nvpipe *codec )
     }
 }
 
+int nvpipe_set_bitrate(nvpipe *codec, int64_t bitrate) {
+    if (codec == NULL)
+        return -1;
+
+    NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
+                                (codec->codec_ptr_);
+
+    codec_ptr->setBitrate(bitrate);
+}
+
 int nvpipe_encode(  nvpipe *codec, 
                     void *input_buffer,
                     const size_t input_buffer_size,
@@ -83,9 +93,7 @@ int nvpipe_encode(  nvpipe *codec,
                     size_t* output_buffer_size,
                     const int width,
                     const int height,
-                    enum NVPipeImageFormat format) 
-{
-
+                    enum NVPipeImageFormat format) {
     if (codec == NULL)
         return -1;
     
@@ -107,8 +115,7 @@ int nvpipe_decode(  nvpipe *codec,
                     size_t output_buffer_size,
                     int* width,
                     int* height,
-                    enum NVPipeImageFormat format)
-{
+                    enum NVPipeImageFormat format){
     if (codec == NULL)
         return -1;
 
@@ -188,7 +195,7 @@ int formatConversion(   int w, int h,
 }
 
 int formatConversionAVFrameRGB(AVFrame *frame, void *buffer) {
-    
+
     switch( frame->format ) {
     case AV_PIX_FMT_NV12:
         {

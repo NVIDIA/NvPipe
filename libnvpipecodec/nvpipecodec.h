@@ -29,14 +29,28 @@
 class NvPipeCodec {
 public:
     virtual void setImageSize(int width, int height);
-    
-    virtual void setInputFrameBuffer(void* frame_buffer, size_t buffer_size);
 
-    virtual void setInputPacketBuffer(void* packet_buffer, size_t buffer_size);
+    virtual void setInputFrameBuffer(   void* frame_buffer,
+                                        size_t buffer_size);
 
-    virtual int encode(void* frame, size_t &size, enum NVPipeImageFormat format)=0;
-    
-    virtual int decode(void* packet, int &width, int &height, size_t &size, enum NVPipeImageFormat format)=0; 
+    virtual void setInputPacketBuffer(  void* packet_buffer,
+                                        size_t buffer_size);
+
+    virtual int encode( void* frame,
+                        size_t &size,
+                        enum NVPipeImageFormat format)=0;
+
+    virtual int decode( void* packet,
+                        int &width,
+                        int &height,
+                        size_t &size,
+                        enum NVPipeImageFormat format)=0; 
+
+    virtual void setBitrate( int64_t bitrate );
+
+    void setGopSize( int gop_size );
+
+    void setFramerate( int framerate );
 
 protected:
     NvPipeCodec();
@@ -52,6 +66,13 @@ protected:
     size_t packet_buffer_size_;
 
     enum NVPipeImageFormat decoder_format_;
+
+    bool bitrate_overwrite_flag_;
+    int64_t bitrate_;
+
+    int gop_size_;
+
+    int framerate_;
 
 private:
 

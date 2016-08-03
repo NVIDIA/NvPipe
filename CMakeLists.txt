@@ -27,10 +27,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
 
-#include_directories(${OPENGL_INCLUDE_DIR})
-#include_directories(${MI_INCLUDE})
 include_directories(${CMAKE_SOURCE_DIR})
+#set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} $ENV{LD_LIBRARY_PATH})
+link_directories($ENV{LD_LIBRARY_PATH})
 
+message($ENV{LD_LIBRARY_PATH})
 # AJ library
 set(NVPIPE "nvpipe")
 
@@ -89,6 +90,14 @@ endif(PKG_CONFIG_FOUND)
 # some extra lib needed
 target_link_libraries (${NVPIPE} "-lm -lX11 -lva -lva-drm -lva-x11 -lvdpau")
 
-add_executable(example ${CMAKE_SOURCE_DIR}/doc/example/test.c)
+add_executable(test_app ${CMAKE_SOURCE_DIR}/doc/example/test.c)
 
-target_link_libraries(example ${NVPIPE})
+target_link_libraries(test_app ${NVPIPE})
+
+#add_executable(benchmark 
+cuda_add_executable(benchmark 
+                ${CMAKE_SOURCE_DIR}/doc/example/benchmark.cxx
+                ${CMAKE_SOURCE_DIR}/doc/example/file_io.cxx)
+
+target_link_libraries(benchmark ${NVPIPE})
+target_link_libraries(benchmark "-lnvToolsExt")
