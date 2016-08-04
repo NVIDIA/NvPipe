@@ -222,33 +222,45 @@ int main( int argc, char* argv[] ) {
                 img_ptr2[y * gap2 + x] = 64 + x;
             }
     }*/
-
+    
     nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
-    nvpipe* codec2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
-    int width=640;
-    int height=480;
+    //nvpipe* codec2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
+    int width = 4096;
+    int height = 2048;
     size_t buffer_size = sizeof(uint8_t)*width*height*3;
     void* img_buffer = malloc(buffer_size);
     //void* img_buffer = pa_alloc(buffer_size);
     size_t img_buffer_size = buffer_size;
     uint8_t* img_ptr0 = img_buffer;
 
+    void** pkt_buffer_list[5];
+    size_t pkt_buffer_size_list[5];
+
     //void* pkt_buffer = pa_alloc(buffer_size);
-    void* pkt_buffer = malloc(buffer_size);
+    for ( int i = 0; i < 5; i++ ) {
+        void* pkt_buffer = malloc(buffer_size);
+        pkt_buffer_list[i] = pkt_buffer;
+        pkt_buffer_size_list[i] = buffer_size;
+    }
+    
     size_t pkt_buffer_size = buffer_size;
 
-    for ( int i = 0; i < 10; i++ ) {
+    for ( int i = 0; i < 5; i++ ) {
 
         pkt_buffer_size = buffer_size;
         img_buffer_size = buffer_size;
 
-        //if ( i > 0 ) {
+        //if ( i > 20 ) {
         if ( 1 ) {
-            width = 640;
-            height = 480;
+            width = 4096;
+            height = 2048;
         } else {
-            width = 320;
-            height = 240;
+            width = 1280;
+            height = 720;
+        }
+        
+        if ( i == 60 ) {
+            nvpipe_set_bitrate(codec, 10000);
         }
 
         for(size_t y=0;y<height;y++) {
@@ -263,7 +275,88 @@ int main( int argc, char* argv[] ) {
         char str[15];
         
         int num = i % 100;
+
+        sprintf(str, "encoded_file%d.pgm", num);
+        SaveBufferRGB(img_buffer, width, height, str);
+        nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer_list[i], &(pkt_buffer_size_list[i]), width, height, NVPIPE_IMAGE_FORMAT_RGB);
+        printf( "frame: %d, packet size: %zu\n", i, pkt_buffer_size_list[i]);
         
+    }
+
+    for ( int i = 0; i < 5; i++) {
+        char str[15];
+        if (nvpipe_decode(codec, pkt_buffer_list[i], pkt_buffer_size_list[i], img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGB) == 0 ) {
+            //if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_NV12) == 0 ) {
+                sprintf(str, "decoded_file%d.pgm", i);
+                SaveBufferRGB(img_buffer, width, height, str);
+                //SaveBufferNV12(img_buffer, width, height, str);
+                
+                //formatConversion(width, height, img_buffer, pkt_buffer, NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB);
+                //sprintf(str, "decoded_file_conv%d.pgm", i);
+                //SaveBufferRGB(pkt_buffer, width, height, str);
+
+        }
+    }
+
+    nvpipe_destroy_instance(codec);
+    //nvpipe_destroy_instance(codec2);
+
+    free(img_buffer);
+    for ( int i = 0; i < 5; i++ ) {
+        free(pkt_buffer_list[i]);
+    }
+
+    return 0;
+    /*
+    
+    nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
+    //nvpipe* codec2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
+    int width = 4096;
+    int height = 2048;
+    size_t buffer_size = sizeof(uint8_t)*width*height*3;
+    void* img_buffer = malloc(buffer_size);
+    //void* img_buffer = pa_alloc(buffer_size);
+    size_t img_buffer_size = buffer_size;
+    uint8_t* img_ptr0 = img_buffer;
+
+    void** pkt_buffer_list[5];
+
+    //void* pkt_buffer = pa_alloc(buffer_size);
+    void* pkt_buffer = malloc(buffer_size);
+    
+    size_t pkt_buffer_size = buffer_size;
+
+    for ( int i = 0; i < 5; i++ ) {
+
+        pkt_buffer_size = buffer_size;
+        img_buffer_size = buffer_size;
+
+        //if ( i > 20 ) {
+        if ( 1 ) {
+            width = 4096;
+            height = 2048;
+        } else {
+            width = 1280;
+            height = 720;
+        }
+        
+        if ( i == 60 ) {
+            nvpipe_set_bitrate(codec, 10000);
+        }
+
+        for(size_t y=0;y<height;y++) {
+            for(size_t x=0;x<width;x++) {
+                int index = y * width + x;
+                img_ptr0[index*3] = (x + y + i*10);
+                img_ptr0[index*3+1] = 128 + y + i *15;
+                img_ptr0[index*3+2] = 64 + x;
+            }
+        }
+
+        char str[15];
+        
+        int num = i % 100;
+
         sprintf(str, "encoded_file%d.pgm", num);
         SaveBufferRGB(img_buffer, width, height, str);
         nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGB);
@@ -285,10 +378,11 @@ int main( int argc, char* argv[] ) {
     }
 
     nvpipe_destroy_instance(codec);
-    nvpipe_destroy_instance(codec2);
+    //nvpipe_destroy_instance(codec2);
 
     free(img_buffer);
     free(pkt_buffer);
 
     return 0;
+    */
 }

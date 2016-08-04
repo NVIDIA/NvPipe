@@ -112,8 +112,8 @@ uint8_t* MemoryStack::pushBuffer(size_t size) {
 uint8_t* MemoryStack::popBuffer() {
     int size = stackItemVector_.size();
     if ( size > 1 ) {
-        stackItemVector_.pop_back();
         used_buffer_ -= stackItemVector_.back().size_;
+        stackItemVector_.pop_back();
         return stackItemVector_.back().ptr_;
     } else {
         return NULL;

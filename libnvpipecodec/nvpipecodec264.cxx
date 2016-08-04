@@ -106,14 +106,13 @@ void NvPipeCodec264::setInputFrameBuffer(   void* frame_buffer,
     if (encoder_conversion_flag_ == NVPIPE_IMAGE_FORMAT_CONVERSION_NULL
             && frame_buffer != frame_ ) {
         encoder_frame_buffer_corrupted_ = true;
-        NvPipeCodec::setInputFrameBuffer(frame_buffer, buffer_size);
-    } else if ( buffer_size != frame_buffer_size_ ) {
-        NvPipeCodec::setInputFrameBuffer(frame_buffer, buffer_size);
     }
+    NvPipeCodec::setInputFrameBuffer(frame_buffer, buffer_size);
 }
 
 void NvPipeCodec264::setBitrate( int64_t bitrate ) {
     NvPipeCodec::setBitrate(bitrate);
+    encoder_config_corrupted_ = true;
 
     if (encoder_context_ != NULL ) {
         encoder_context_->bit_rate = bitrate;
@@ -149,78 +148,30 @@ int NvPipeCodec264::encode( void* buffer,
             return -1;
         }
 
-        encoder_context_ = avcodec_alloc_context3( encoder_codec_ );
-        if (encoder_context_ == NULL) {
-            printf("cannot allocate codec context");
-            return -1;
-        }
-
         encoder_frame_ = av_frame_alloc();
         if (encoder_frame_ == NULL) {
             printf("cannot allocate frame");
             return -1;
         }
 
-        /*
-         * setup codecContext
-         * Default low latency setup for nvenc
-         */
-        // put bit_rate
-        if ( !bitrate_overwrite_flag_ ) {
-            bitrate_ = width_;
-            bitrate_ *= height_;
-            bitrate_ *= framerate_;
-            bitrate_ *= 0.07;
-        }
-        encoder_context_->bit_rate = bitrate_;
-        // frames per second
-        encoder_context_->time_base = (AVRational){1,framerate_};
-        encoder_context_->gop_size = gop_size_;
-        encoder_context_->max_b_frames = 0;
-        encoder_context_->width = width_;
-        encoder_context_->height = height_;
-        encoder_context_->pix_fmt = encoder_frame_pixel_format_;
-        // nvenc private setting
-        av_opt_set(encoder_context_->priv_data,
-                    "preset", "llhq", 0);
-        av_opt_set(encoder_context_->priv_data,
-                    "rc", "ll_2pass_quality", 0);
-        av_opt_set_int(encoder_context_->priv_data, "cbr", 1, 0);    
-        av_opt_set_int(encoder_context_->priv_data, "2pass", 1, 0);
-        av_opt_set_int(encoder_context_->priv_data, "delay", 0, 0);
-
-
-        encoder_frame_->format = encoder_frame_pixel_format_;
-        encoder_frame_->width = width_;
-        encoder_frame_->height = height_;
-
-        if (avcodec_open2(encoder_context_, encoder_codec_, NULL) 
-            != 0) {
-            printf("cannot open codec\n");
+        if ( configureEncoderContext() != 0 ) {
             return -1;
         }
-        
-        encoder_config_corrupted_ = true;
+
+        encoder_config_corrupted_ = false;
+        encoder_frame_buffer_corrupted_ = true;
     }
 
 
     // Check if encoder frame parameter has been updated
     if (encoder_config_corrupted_) {
-        printf("encoder configuring...\n");
-        if ( !bitrate_overwrite_flag_ ) {
-            bitrate_ = width_;
-            bitrate_ *= height_;
-            bitrate_ *= framerate_;
-            bitrate_ *= 0.07;
+        printf("encoder reconfiguring...\n");
+        avcodec_close(encoder_context_);
+        av_free(encoder_context_);
+
+        if ( configureEncoderContext() != 0 ) {
+            return -1;
         }
-        encoder_context_->bit_rate = bitrate_;
-        encoder_context_->width = width_;
-        encoder_context_->height = height_;
-        encoder_context_->pix_fmt = encoder_frame_pixel_format_;
-        
-        encoder_frame_->format = encoder_frame_pixel_format_;
-        encoder_frame_->width = width_;
-        encoder_frame_->height = height_;
 
         encoder_config_corrupted_ = false;
         encoder_frame_buffer_corrupted_ = true;
@@ -231,6 +182,10 @@ int NvPipeCodec264::encode( void* buffer,
         const uint8_t* frame_image_ptr;
         size_t num_pixels = width_;
         num_pixels *= height_;
+
+        encoder_frame_->format = encoder_frame_pixel_format_;
+        encoder_frame_->width = width_;
+        encoder_frame_->height = height_;
 
         switch ( encoder_conversion_flag_ ) {
             case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
@@ -375,8 +330,12 @@ int NvPipeCodec264::decode( void* output_picture,
         }
 
         decoder_context_->delay = 0;
-
-        decoder_config_corrupted_ = true;
+        if (avcodec_open2(decoder_context_, 
+                            decoder_codec_, NULL) < 0) {
+            printf("cannot open codec\n");
+            return -1;
+        }
+        decoder_config_corrupted_ = false;
     }
 
     getFormatConversionEnum(format,
@@ -385,7 +344,8 @@ int NvPipeCodec264::decode( void* output_picture,
                             pixel_format);
 
     if ( decoder_config_corrupted_ ) {
-        printf("decoder configuring...\n");
+        printf("decoder reconfiguring...\n");
+        avcodec_close(decoder_context_);
         if (avcodec_open2(decoder_context_, 
                             decoder_codec_, NULL) < 0) {
             printf("cannot open codec\n");
@@ -564,4 +524,45 @@ void NvPipeCodec264::appendDummyNAL(void* buffer, size_t offset) {
     pkt_ptr[7] = 1;
     pkt_ptr[8] = 9;
     pkt_ptr[9] = 0;
+}
+
+int NvPipeCodec264::configureEncoderContext() {
+    encoder_context_ = avcodec_alloc_context3( encoder_codec_ );
+    if (encoder_context_ == NULL) {
+        printf("cannot allocate codec context");
+        return -1;
+    }
+    /*
+     * setup codecContext
+     * Default low latency setup for nvenc
+     */
+    // put bit_rate
+    if ( !bitrate_overwrite_flag_ ) {
+        bitrate_ = width_;
+        bitrate_ *= height_;
+        bitrate_ *= framerate_;
+        bitrate_ *= 0.07;
+    }
+    encoder_context_->bit_rate = bitrate_;
+    // frames per second
+    encoder_context_->time_base = (AVRational){1,framerate_};
+    encoder_context_->gop_size = gop_size_;
+    encoder_context_->max_b_frames = 0;
+    encoder_context_->width = width_;
+    encoder_context_->height = height_;
+    encoder_context_->pix_fmt = encoder_frame_pixel_format_;
+    // nvenc private setting
+    av_opt_set(encoder_context_->priv_data,
+                "preset", "llhq", 0);
+    av_opt_set(encoder_context_->priv_data,
+                "rc", "ll_2pass_quality", 0);
+    av_opt_set_int(encoder_context_->priv_data, "cbr", 1, 0);    
+    av_opt_set_int(encoder_context_->priv_data, "2pass", 1, 0);
+    av_opt_set_int(encoder_context_->priv_data, "delay", 0, 0);
+
+    if (avcodec_open2(encoder_context_, encoder_codec_, NULL) 
+        != 0) {
+        printf("cannot open codec\n");
+        return -1;
+    }
 }

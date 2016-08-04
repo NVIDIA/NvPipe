@@ -142,7 +142,7 @@ int main( int argc, char* argv[] ) {
     MemoryStack img_stack(img_buffer, buffer_size);
     MemoryStack pkt_stack(pkt_buffer, buffer_size);
 
-    size_t image_size = width * height * 3;
+    size_t image_size = width * height * 3 * sizeof(uint8_t);
     uint8_t *ptr;
     size_t current_packet_size;
 
@@ -184,24 +184,24 @@ int main( int argc, char* argv[] ) {
          *  encoding timing!
          ************************************************/
         cudaProfilerStart();
-        nvtxMarkA("encoding started here");
         for ( int i = 0; i < frame_number; i++ ) {
             current_packet_size = pkt_stack.getRemainingSpace();
-            nvtxRangePushA("encodingSession");
-            
+            //nvtxRangePushA("encodingSession");
+            //SaveBufferRGB(img_stack.getBufferHandle(i), width, height, "test.pgm");
             //if ( i == 40 ) {
             if (false) {
                 printf ("update frame rate");
                 nvpipe_set_bitrate(codec, 50000);
             }
-            
+            printf( "image %d handle: %zu, %zu\n", i, img_stack.getBufferHandle(i), image_size);
+            printf( "packet index: %d, ptr: %d, size: %zu\n", i, ptr, current_packet_size);
             nvpipe_encode(  codec,
-                            img_stack.getBufferHandle(i), image_size, 
-                            ptr, &current_packet_size,
+                            img_stack.getBufferHandle(i), image_size,
+                            pkt_stack.getBufferHandle(i), &current_packet_size,
                             width, height,
                             NVPIPE_IMAGE_FORMAT_RGB);
-            ptr = pkt_stack.pushBuffer(current_packet_size);
-            nvtxRangePop();
+            pkt_stack.pushBuffer(current_packet_size);
+            //nvtxRangePop();
         }
         cudaProfilerStop();
         /***encoding timing ended************************/
@@ -231,13 +231,11 @@ int main( int argc, char* argv[] ) {
          *  decoding timing!
          ************************************************/
         cudaProfilerStart();
-        nvtxMarkA("decoding started here");
         for ( int i = 0; i < frame_number; i++ ) {
-            ptr = pkt_stack.getBufferHandle(i);
             current_packet_size = pkt_stack.getBufferSize(i);
             nvtxRangePushA("decodingSession");
             nvpipe_decode(  codec,
-                            ptr, current_packet_size,
+                            pkt_stack.getBufferHandle(i), current_packet_size,
                             img_stack.getBufferHandle(i), image_size,
                             &decode_width, &decode_height,
                             NVPIPE_IMAGE_FORMAT_RGB);
@@ -254,52 +252,7 @@ int main( int argc, char* argv[] ) {
         }
 
     }
-    
-    
 
-/*
-    uint8_t* img_ptr0 = (uint8_t*) img_buffer;
-    for ( int i = 0; i < 15; i++ ) {
-
-        pkt_buffer_size = buffer_size;
-        img_buffer_size = buffer_size;
-
-        if ( i < 6 ) {
-        //if ( i > 6 ) {
-            width = 640;
-            height = 480;
-        } else {
-            width = 320;
-            height = 240;
-        }
-
-        for(size_t y=0;y<height;y++) {
-            for(size_t x=0;x<width;x++) {
-                int index = y * width + x;
-                img_ptr0[index*3] = (x + y + i*10);
-                img_ptr0[index*3+1] = 128 + y + i *15;
-                img_ptr0[index*3+2] = 64 + x;
-            }
-        }
-
-        char str[15];
-        sprintf(str, "encoded_file%d.pgm", i);
-        SaveBufferRGB(img_ptr0, width, height, str);
-        nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGB);
-
-        if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGB) == 0 ) {
-            sprintf(str, "decoded_file%d.pgm", i);
-            SaveBufferRGB(img_ptr0, width, height, str);
-        } else {
-            printf("decoding frame not written to file: %d\n", i);
-        }
-
-        //printf("decoding dimension: %d, %d", width, height);
-
-    }
-
-    nvpipe_destroy_instance(codec);
-*/
     free(img_buffer);
     free(pkt_buffer);
     return 0;

@@ -99,4 +99,5 @@ private:
 
     enum AVPixelFormat encoder_frame_pixel_format_;
 
+    int configureEncoderContext();
 };
