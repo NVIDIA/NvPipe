@@ -188,6 +188,13 @@ int main( int argc, char* argv[] ) {
         for ( int i = 0; i < frame_number; i++ ) {
             current_packet_size = pkt_stack.getRemainingSpace();
             nvtxRangePushA("encodingSession");
+            
+            //if ( i == 40 ) {
+            if (false) {
+                printf ("update frame rate");
+                nvpipe_set_bitrate(codec, 50000);
+            }
+            
             nvpipe_encode(  codec,
                             img_stack.getBufferHandle(i), image_size, 
                             ptr, &current_packet_size,

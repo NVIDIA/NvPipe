@@ -24,6 +24,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <libavformat/avformat.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,12 +59,37 @@ enum NVPipeImageFormatConversion {
     NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12
 };
 
-int formatConversion( int w, int h, 
-                        void* imagePtrARGB, 
+typedef struct _nvpipeMemGpu2 {
+
+    unsigned int* d_buffer_1_;
+    unsigned int* d_buffer_2_;
+    size_t d_buffer_1_size_;
+    size_t d_buffer_2_size_;
+} nvpipeMemGpu2;
+
+void initializeMemGpu2(nvpipeMemGpu2 *mem_gpu);
+
+void allocateMemGpu2(   nvpipeMemGpu2 *mem_gpu, 
+                        size_t size_1, size_t size_2);
+void destroyMemGpu2(nvpipeMemGpu2 *mem_gpu);
+
+int formatConversion( int w, int h,
+                        void* imagePtrARGB,
                         void* imagPtrNV12,
-                        enum NVPipeImageFormatConversion );
+                        enum NVPipeImageFormatConversion);
 
+int formatConversionReuseMemory( int w, int h,
+                        void* imagePtrARGB,
+                        void* imagPtrNV12,
+                        enum NVPipeImageFormatConversion,
+                        nvpipeMemGpu2 *mem_gpu2);
 
+int formatConversionAVFrameRGB( AVFrame *frame,
+                                void *buffer);
+
+int formatConversionAVFrameRGBReuseMemory( AVFrame *frame,
+                                void *buffer,
+                                nvpipeMemGpu2 *mem_gpu2);
 #ifdef __cplusplus
 }
 #endif

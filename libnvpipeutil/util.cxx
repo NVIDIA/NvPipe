@@ -22,12 +22,9 @@
  */
 
 #include "nvpipe.h"
-
 #include "libnvpipecodec/nvpipecodec.h"
-
 #include "libnvpipecodec/nvpipecodec264.h"
-
-#include "libnvpipeutil/image_format_conversion.h"
+#include "libnvpipeutil/formatConversionCuda.h"
 
 nvpipe* nvpipe_create_instance( enum NVPipeCodecID id )
 {
@@ -133,10 +130,10 @@ int nvpipe_decode(  nvpipe *codec,
     return 0;
 }
 
-int formatConversion(   int w, int h, 
-            void* source, 
+int formatConversion(   int w, int h,
+            void* source,
             void* destination, 
-            enum NVPipeImageFormatConversion conversionEnum) 
+            enum NVPipeImageFormatConversion conversionEnum)
 {
     unsigned int * d_sourcePtr;
     unsigned int * d_destinationPtr;
@@ -194,7 +191,102 @@ int formatConversion(   int w, int h,
     return ret;
 }
 
-int formatConversionAVFrameRGB(AVFrame *frame, void *buffer) {
+int formatConversionReuseMemory(   int w, int h,
+            void* source,
+            void* destination,
+            enum NVPipeImageFormatConversion conversionEnum,
+            nvpipeMemGpu2 *mem_gpu2) 
+{
+    unsigned int * d_sourcePtr;
+    unsigned int * d_destinationPtr;
+
+    size_t sourceSize;
+    size_t destinationSize;
+    size_t largeBufferSize;
+    size_t smallBufferSize;
+    
+    unsigned int ** smallBuffer;
+    unsigned int ** largeBuffer;
+
+    int ret = 0;
+    conversionFunctionPtr funcPtr = NULL;
+
+    switch ( conversionEnum ) {
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_NULL:
+        return -1;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
+        sourceSize = sizeof(uint8_t)*w*h*4;
+        destinationSize = sizeof(uint8_t)*w*h*3/2;
+        smallBuffer = &d_destinationPtr;
+        smallBufferSize = destinationSize;
+        largeBuffer = &d_sourcePtr;
+        largeBufferSize = sourceSize;
+        funcPtr = &launch_CudaARGB2NV12Process;
+        break;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
+        sourceSize = sizeof(uint8_t)*w*h*3;
+        destinationSize = sizeof(uint8_t)*w*h*3/2;
+        smallBuffer = &d_destinationPtr;
+        smallBufferSize = destinationSize;
+        largeBuffer = &d_sourcePtr;
+        largeBufferSize = sourceSize;
+        funcPtr = &launch_CudaRGB2NV12Process;
+        break;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB:
+        sourceSize = sizeof(uint8_t)*w*h*3/2;
+        destinationSize = sizeof(uint8_t)*w*h*4;
+        smallBuffer = &d_sourcePtr;
+        smallBufferSize = sourceSize;
+        largeBuffer = &d_destinationPtr;
+        largeBufferSize = destinationSize;
+        funcPtr = &launch_CudaNV12TOARGBProcess;
+        break;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB:
+        sourceSize = sizeof(uint8_t)*w*h*3/2;
+        destinationSize = sizeof(uint8_t)*w*h*3;
+        smallBuffer = &d_sourcePtr;
+        smallBufferSize = sourceSize;
+        largeBuffer = &d_destinationPtr;
+        largeBufferSize = destinationSize;
+        funcPtr = &launch_CudaNV12TORGBProcess;
+        break;
+    default:
+        return -1;
+    }
+    
+    if (largeBufferSize > mem_gpu2->d_buffer_1_size_ ||
+        smallBufferSize > mem_gpu2->d_buffer_2_size_) {
+            printf("mem reallocate!\n");
+        destroyMemGpu2(mem_gpu2);
+        checkCudaErrors(
+            cudaMalloc( (void **) &(mem_gpu2->d_buffer_1_),
+                        largeBufferSize));
+        mem_gpu2->d_buffer_1_size_ = largeBufferSize;
+        checkCudaErrors(
+            cudaMalloc( (void **) &(mem_gpu2->d_buffer_2_),
+                        smallBufferSize));
+        mem_gpu2->d_buffer_2_size_ = smallBufferSize;
+    }
+    (*smallBuffer) = mem_gpu2->d_buffer_2_;
+    (*largeBuffer) = mem_gpu2->d_buffer_1_;
+
+    checkCudaErrors(
+        cudaMemcpy( d_sourcePtr, source, sourceSize, 
+                    cudaMemcpyHostToDevice ));
+
+    ret =   (*funcPtr)(w, h, 
+            (CUdeviceptr) d_sourcePtr, (CUdeviceptr) d_destinationPtr);
+
+    checkCudaErrors(
+        cudaMemcpy( destination, d_destinationPtr, 
+        destinationSize, cudaMemcpyDeviceToHost ));
+
+    return ret;
+}
+
+int formatConversionAVFrameRGBReuseMemory( AVFrame *frame, 
+                                void *buffer,
+                                nvpipeMemGpu2 *mem_gpu2) {
 
     switch( frame->format ) {
     case AV_PIX_FMT_NV12:
@@ -205,14 +297,25 @@ int formatConversionAVFrameRGB(AVFrame *frame, void *buffer) {
             
             int w = frame->width;
             int h = frame->height;
-            
-            checkCudaErrors(
-                cudaMalloc( (void **) &d_YPtr, sizeof(uint8_t)*w*h));
-            checkCudaErrors(
-                cudaMalloc( (void **) &d_UVPtr, sizeof(uint8_t)*w*h/2));
-            checkCudaErrors(
-                cudaMalloc( (void **) &d_bufferPtr, sizeof(uint8_t)*w*h*3));
-            
+
+            size_t pixel_count = w * h * sizeof(uint8_t);
+
+            if (pixel_count*3 > mem_gpu2->d_buffer_1_size_ ||
+                pixel_count*3/2 > mem_gpu2->d_buffer_2_size_ ) {
+                printf("mem reallocate!\n");
+                allocateMemGpu2(mem_gpu2,
+                                pixel_count*3,
+                                pixel_count*3/2);
+            }
+
+            d_bufferPtr = mem_gpu2->d_buffer_1_;
+            d_YPtr = mem_gpu2->d_buffer_2_;
+
+            //Alert!
+            //  ugly coade ahead: 
+            //  pixel_count/4 because CUDA offset is per word!
+            d_UVPtr = mem_gpu2->d_buffer_2_ + pixel_count/4;
+
             checkCudaErrors(
                 cudaMemcpy( d_YPtr, frame->data[0], sizeof(uint8_t)*w*h, 
                             cudaMemcpyHostToDevice ));
@@ -229,10 +332,61 @@ int formatConversionAVFrameRGB(AVFrame *frame, void *buffer) {
             checkCudaErrors(
                 cudaMemcpy( buffer, d_bufferPtr, 
                 sizeof(uint8_t)*w*h*3, cudaMemcpyDeviceToHost ));
-                
-            checkCudaErrors(cudaFree(d_YPtr));
-            checkCudaErrors(cudaFree(d_UVPtr));
-            checkCudaErrors(cudaFree(d_bufferPtr));
+
+            return ret;
+            break;
+        }
+    case AV_PIX_FMT_ARGB:
+        {
+            printf("not supported yet\n");
+            break;
+        }
+    default:
+        {
+            printf("default?\n");
+            break;
+        }
+    }
+    return 0;
+}
+
+int formatConversionAVFrameRGB( AVFrame *frame, 
+                                void *buffer) {
+
+    switch( frame->format ) {
+    case AV_PIX_FMT_NV12:
+        {
+            unsigned int * d_YPtr;
+            unsigned int * d_UVPtr;
+            unsigned int * d_bufferPtr;
+            
+            int w = frame->width;
+            int h = frame->height;
+
+            size_t pixel_count = w * h * sizeof(uint8_t);
+            checkCudaErrors(
+                cudaMalloc( (void **) &(d_bufferPtr), pixel_count*3));
+            checkCudaErrors(
+                cudaMalloc( (void **) &(d_YPtr), pixel_count));
+            checkCudaErrors(
+                cudaMalloc( (void **) &(d_UVPtr), pixel_count/2));
+
+            checkCudaErrors(
+                cudaMemcpy( d_YPtr, frame->data[0], sizeof(uint8_t)*w*h, 
+                            cudaMemcpyHostToDevice ));
+            checkCudaErrors(
+                cudaMemcpy( d_UVPtr, frame->data[1], sizeof(uint8_t)*w*h/2, 
+                            cudaMemcpyHostToDevice ));
+            
+            int ret =   launch_CudaNV12TORGBProcessDualChannel(
+                    frame->width, frame->height,
+                    (CUdeviceptr) d_YPtr,
+                    (CUdeviceptr) d_UVPtr,
+                    (CUdeviceptr) d_bufferPtr);
+
+            checkCudaErrors(
+                cudaMemcpy( buffer, d_bufferPtr, 
+                sizeof(uint8_t)*w*h*3, cudaMemcpyDeviceToHost ));
 
             return ret;
             break;
@@ -252,3 +406,33 @@ int formatConversionAVFrameRGB(AVFrame *frame, void *buffer) {
 }
 
 
+void destroyMemGpu2(nvpipeMemGpu2 *mem_gpu) {
+    if ( mem_gpu->d_buffer_1_ ) {
+        mem_gpu->d_buffer_1_size_ = 0;
+        checkCudaErrors(cudaFree(mem_gpu->d_buffer_1_));
+    }
+    if ( mem_gpu->d_buffer_2_ ) {
+        mem_gpu->d_buffer_2_size_ = 0;
+        checkCudaErrors(cudaFree(mem_gpu->d_buffer_2_));
+    }
+}
+
+void allocateMemGpu2(   nvpipeMemGpu2 *mem_gpu,
+                        size_t size_1, size_t size_2) {
+    destroyMemGpu2(mem_gpu);
+
+    checkCudaErrors(
+        cudaMalloc( (void **) &(mem_gpu->d_buffer_1_), size_1));
+    mem_gpu->d_buffer_1_size_ = size_1;
+
+    checkCudaErrors(
+        cudaMalloc( (void **) &(mem_gpu->d_buffer_2_), size_2));
+    mem_gpu->d_buffer_2_size_ = size_2;
+}
+
+void initializeMemGpu2(nvpipeMemGpu2 *mem_gpu) {
+    mem_gpu->d_buffer_1_size_= 0;
+    mem_gpu->d_buffer_2_size_= 0;
+    mem_gpu->d_buffer_1_ = NULL;
+    mem_gpu->d_buffer_2_ = NULL;
+}

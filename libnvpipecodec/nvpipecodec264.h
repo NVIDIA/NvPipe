@@ -36,7 +36,7 @@ extern "C"
 #endif
 
 #include "libnvpipecodec/nvpipecodec.h"
-#include "libnvpipeutil/image_format_conversion.h"
+#include "libnvpipeutil/formatConversionCuda.h"
 
 class NvPipeCodec264 : public NvPipeCodec {
 
@@ -52,6 +52,8 @@ public:
                         enum NVPipeImageFormat format);
 
     virtual void setImageSize( int width, int height);
+
+    virtual void setBitrate( int64_t bitrate );
 
     virtual void setInputFrameBuffer(   void* frame_buffer, 
                                         size_t buffer_size);
@@ -72,6 +74,8 @@ protected:
 
 private:
 
+    _nvpipeMemGpu2 memgpu2_;
+
     int getFormatConversionEnum(
             enum NVPipeImageFormat format,
             bool encoder_flag,
@@ -83,6 +87,8 @@ private:
 
     bool encoder_config_corrupted_;
     bool decoder_config_corrupted_;
+
+    bool encoder_frame_buffer_corrupted_;
 
     // not the best implementation.
     enum NVPipeImageFormatConversion encoder_conversion_flag_;

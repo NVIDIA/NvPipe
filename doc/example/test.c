@@ -173,9 +173,8 @@ int main( int argc, char* argv[] ) {
     free (rgb_img_ptr);
     free (nv12_img_ptr);
     return 0;
-    */    
-    
-    
+    */
+
     /*
     nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
 
@@ -223,8 +222,6 @@ int main( int argc, char* argv[] ) {
                 img_ptr2[y * gap2 + x] = 64 + x;
             }
     }*/
-    
-    
 
     nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
     nvpipe* codec2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
@@ -245,9 +242,8 @@ int main( int argc, char* argv[] ) {
         pkt_buffer_size = buffer_size;
         img_buffer_size = buffer_size;
 
-        //if ( i < 6 ) {
-        if ( i > 0 ) {
-        //if ( 1 ) {
+        //if ( i > 0 ) {
+        if ( 1 ) {
             width = 640;
             height = 480;
         } else {
@@ -271,23 +267,8 @@ int main( int argc, char* argv[] ) {
         sprintf(str, "encoded_file%d.pgm", num);
         SaveBufferRGB(img_buffer, width, height, str);
         nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGB);
-/*
-        uint8_t* pkt_ptr = pkt_buffer;
-        pkt_ptr += pkt_buffer_size;
-        pkt_ptr[0] = 0;
-        pkt_ptr[1] = 0;
-        pkt_ptr[2] = 1;
-        pkt_ptr[3] = 9;
-        pkt_ptr[4] = 0;
-        pkt_ptr[5] = 0;
-        pkt_ptr[6] = 0;
-        pkt_ptr[7] = 1;
-        pkt_ptr[8] = 9;
-        pkt_ptr[9] = 0;
-        pkt_buffer_size += 10;
- */
+        printf( "frame: %d, packet size: %zu\n", i, pkt_buffer_size);
         if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGB) == 0 ) {
-        //if (nvpipe_decode(codec2, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_NV12) == 0 ) {
         //if (nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_NV12) == 0 ) {
             sprintf(str, "decoded_file%d.pgm", i);
             SaveBufferRGB(img_buffer, width, height, str);
@@ -300,22 +281,8 @@ int main( int argc, char* argv[] ) {
         } else {
             printf("decoding frame not written to file: %d\n", i);
         }
-        
-        //printf("decoding dimension: %d, %d", width, height);
 
     }
-    
-    // grab the last frame
-    //
-    //if (nvpipe_decode(codec, NULL, 0, img_buffer, &img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_YUV420P) == 0 ) {
-        //char str[15];
-        //printf("decoding frame: %d\n", 20);
-        //sprintf(str, "decoded_file%d.pgm", 20);
-        //SaveBuffer(img_buffer, width, height, str);
-        //printf("Next\n");
-    //} else {
-        //printf("decoding frame not written to file: %d\n", 20);
-    //}
 
     nvpipe_destroy_instance(codec);
     nvpipe_destroy_instance(codec2);

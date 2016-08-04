@@ -42,6 +42,8 @@ NvPipeCodec264::NvPipeCodec264() {
 
     encoder_config_corrupted_ = true;
     decoder_config_corrupted_ = true;
+    
+    encoder_frame_buffer_corrupted_ = true;
 
     encoder_conversion_flag_ = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
     decoder_conversion_flag_ = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
@@ -52,6 +54,8 @@ NvPipeCodec264::NvPipeCodec264() {
     // register all available file formats and codecs
     // could be initialized multiple times.
     av_register_all();
+    
+    initializeMemGpu2(&memgpu2_);
 }
 
 NvPipeCodec264::~NvPipeCodec264() {
@@ -85,6 +89,7 @@ NvPipeCodec264::~NvPipeCodec264() {
         av_frame_free(&encoder_frame_);
     }
 
+    destroyMemGpu2(&memgpu2_);
 }
 
 void NvPipeCodec264::setImageSize( int width, int height) {
@@ -98,11 +103,20 @@ void NvPipeCodec264::setImageSize( int width, int height) {
 void NvPipeCodec264::setInputFrameBuffer(   void* frame_buffer, 
                                             size_t buffer_size)
 {
-    if ( frame_buffer != frame_ ) {
-        encoder_config_corrupted_ = true;
+    if (encoder_conversion_flag_ == NVPIPE_IMAGE_FORMAT_CONVERSION_NULL
+            && frame_buffer != frame_ ) {
+        encoder_frame_buffer_corrupted_ = true;
         NvPipeCodec::setInputFrameBuffer(frame_buffer, buffer_size);
     } else if ( buffer_size != frame_buffer_size_ ) {
         NvPipeCodec::setInputFrameBuffer(frame_buffer, buffer_size);
+    }
+}
+
+void NvPipeCodec264::setBitrate( int64_t bitrate ) {
+    NvPipeCodec::setBitrate(bitrate);
+
+    if (encoder_context_ != NULL ) {
+        encoder_context_->bit_rate = bitrate;
     }
 }
 
@@ -192,7 +206,7 @@ int NvPipeCodec264::encode( void* buffer,
 
     // Check if encoder frame parameter has been updated
     if (encoder_config_corrupted_) {
-        //printf("encoder configuring...\n");
+        printf("encoder configuring...\n");
         if ( !bitrate_overwrite_flag_ ) {
             bitrate_ = width_;
             bitrate_ *= height_;
@@ -208,6 +222,12 @@ int NvPipeCodec264::encode( void* buffer,
         encoder_frame_->width = width_;
         encoder_frame_->height = height_;
 
+        encoder_config_corrupted_ = false;
+        encoder_frame_buffer_corrupted_ = true;
+    }
+
+    if (encoder_frame_buffer_corrupted_) {
+        printf("update encoder frame buffer\n");
         const uint8_t* frame_image_ptr;
         size_t num_pixels = width_;
         num_pixels *= height_;
@@ -247,15 +267,19 @@ int NvPipeCodec264::encode( void* buffer,
             printf("could not associate image buffer to frame");
             return -1;
         }
-        encoder_config_corrupted_ = false;
+        encoder_frame_buffer_corrupted_ = false;
     }
 
     switch ( encoder_conversion_flag_ ) {
     case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
-        formatConversion(width_, height_, 
-                        frame_, encoder_converted_image_buffer_,
-                        encoder_conversion_flag_);
+        //formatConversion(width_, height_, 
+        //                frame_, encoder_converted_image_buffer_,
+        //                encoder_conversion_flag_);
+        formatConversionReuseMemory(width_, height_, frame_,
+                                    encoder_converted_image_buffer_,
+                                    encoder_conversion_flag_,
+                                    &memgpu2_);
         break;
     default:
         break;
@@ -330,9 +354,9 @@ int NvPipeCodec264::decode( void* output_picture,
 
     // Check if decoder codec has been initialized
     if (decoder_codec_ == NULL) {
+
         decoder_codec_ = 
             avcodec_find_decoder_by_name(NVPIPE_H264_DECODER_NAME);
-        
         if (decoder_codec_ == NULL) {
             printf("cannot find decoder: %s", NVPIPE_H264_DECODER_NAME);
             return -1;
@@ -361,7 +385,7 @@ int NvPipeCodec264::decode( void* output_picture,
                             pixel_format);
 
     if ( decoder_config_corrupted_ ) {
-        //printf("decoder configuring...\n");
+        printf("decoder configuring...\n");
         if (avcodec_open2(decoder_context_, 
                             decoder_codec_, NULL) < 0) {
             printf("cannot open codec\n");
@@ -424,7 +448,10 @@ int NvPipeCodec264::decode( void* output_picture,
             return -1;
         }
         output_size = frameSize;
-        formatConversionAVFrameRGB(decoder_frame_, output_picture);
+        formatConversionAVFrameRGBReuseMemory(  decoder_frame_,
+                                                output_picture,
+                                                &memgpu2_);
+        //formatConversionAVFrameRGB( decoder_frame_, output_picture);
         av_packet_unref(&decoder_packet_);
         return 0;
         break;
@@ -470,10 +497,16 @@ int NvPipeCodec264::decode( void* output_picture,
         return -1;
     }
 
-    formatConversion(width, height, 
-                    decoder_frame_->data[0], 
-                    output_picture,
-                    decoder_conversion_flag_);
+    //formatConversion(width, height, 
+    //                decoder_frame_->data[0], 
+    //                output_picture,
+    //                decoder_conversion_flag_);
+    formatConversionReuseMemory(width, height, 
+                                decoder_frame_->data[0], 
+                                output_picture,
+                                decoder_conversion_flag_,
+                                &memgpu2_);
+                                
     av_packet_unref(&decoder_packet_);
     return 0;
 }

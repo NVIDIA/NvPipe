@@ -4,7 +4,6 @@
 #include <cuda_runtime.h>
 
 
-
 __forceinline__  __device__ float clamp(float x, float a, float b)
 {
   return max(a, min(b, x));
