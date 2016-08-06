@@ -31,7 +31,13 @@ void PrintHelp() {
     printf("-h [number]\n");
     printf("    specify height of the image (only for encoder)\n");
     printf("-f [number]\n");
-    printf("    specify # total of frame\n");
+    printf("    specify total # of frame\n");
+    printf("-r [number]\n");
+    printf("    specify repeating times\n");
+    printf("-p\n");
+    printf("    save image to files\n");
+    printf("-v\n");
+    printf("    discard first frame in profiler\n");
     printf("-o [filename]\n");
     printf("    specify output filename\n");
     printf("      encoder will generate filename.pkt\n");
@@ -61,16 +67,22 @@ int main( int argc, char* argv[] ) {
     int frame_number = 100;
     int width = 1280;
     int height = 720;
+    int repeat = 1;
+    bool save_image_flag = false;
+    bool discard_initial_timer = false;
     int64_t bitrate = 0;
     char *output_file = NULL;
 
     char *input_flag = NULL;
 
     int c;
-    while ((c = getopt (argc, argv, "dei:f:o:w:h:b:")) != -1) {
+    while ((c = getopt (argc, argv, "depvi:f:o:w:h:b:r:")) != -1) {
         switch (c) {
         case 'd':
             decoding_flag = true;
+            break;
+        case 'p':
+            save_image_flag = true;
             break;
         case 'e':
             encoding_flag = true;
@@ -92,6 +104,12 @@ int main( int argc, char* argv[] ) {
             break;
         case 'b':
             bitrate = ConvertStrTo64(optarg);
+            break;
+        case 'r':
+            repeat = std::stoi(optarg);
+            break;
+        case 'v':
+            discard_initial_timer = true;
             break;
         case '?':
             if (isprint (optopt))
@@ -127,7 +145,8 @@ int main( int argc, char* argv[] ) {
 
     printf ("   output_file: %s\n", output_file);
 
-    printf ("   experiment starts...\n\n");
+    printf ("*************************\n");
+    printf ("\n   experiment starts...\n");
 
     nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
 
@@ -137,10 +156,10 @@ int main( int argc, char* argv[] ) {
 
     uint8_t* img_buffer = (uint8_t*)pa_alloc(buffer_size);
 
-    uint8_t* pkt_buffer = (uint8_t*)pa_alloc(buffer_size);
+    uint8_t* pkt_buffer = (uint8_t*)pa_alloc(buffer_size * repeat / 100);
 
     MemoryStack img_stack(img_buffer, buffer_size);
-    MemoryStack pkt_stack(pkt_buffer, buffer_size);
+    MemoryStack pkt_stack(pkt_buffer, buffer_size/8);
 
     size_t image_size = width * height * 3 * sizeof(uint8_t);
     uint8_t *ptr;
@@ -151,19 +170,27 @@ int main( int argc, char* argv[] ) {
     if ( encoding_flag ) {
 
         size_t total_packet_size = 0;
-        for ( int i = 0; i < frame_number; i++ ) {
-            ptr = img_stack.getBufferHandle();
-            for(size_t y=0;y<height;y++) {
-                for(size_t x=0;x<width;x++) {
-                    int index = y * width + x;
-                    ptr[index*3] = (x + y + i*5);
-                    ptr[index*3+1] = 128 + y + i *3;
-                    ptr[index*3+2] = 64 + x;
+
+        if ( input_flag ) {
+            img_stack.loadBufferFromFileList(   input_flag,
+                                                PLAIN_DATA,
+                                                frame_number);
+        } else {
+            for ( int i = 0; i < frame_number; i++ ) {
+                ptr = img_stack.getBufferHandle();
+                for(size_t y=0;y<height;y++) {
+                    for(size_t x=0;x<width;x++) {
+                        int index = y * width + x;
+                        ptr[index*3] = (x + y + i*5);
+                        ptr[index*3+1] = 128 + y + i *3;
+                        ptr[index*3+2] = 64 + x;
+                    }
                 }
+                img_stack.pushBuffer(image_size);
             }
-            img_stack.pushBuffer(image_size);
         }
-        if ( output_file ) {
+
+        if ( output_file && save_image_flag ) {
             sprintf(file_name, "%s_encoded", output_file);
             img_stack.writeBufferToFileList(file_name,
                                             RGB_PICTURE,
@@ -175,52 +202,73 @@ int main( int argc, char* argv[] ) {
         if ( bitrate > 0 ) {
             nvpipe_set_bitrate(codec, bitrate);
         }
-        printf ("   image size: %d, memory usage: %zu \n", 
-                img_stack.getSize(), 
-                img_stack.getUsedSpace() );
-        printf ("   accumulated space: %zu \n", total_packet_size);
 
         /************************************************
          *  encoding timing!
          ************************************************/
+        int iteration = 0;
+        int index = 0;
         cudaProfilerStart();
+        bool flag = !discard_initial_timer;
         for ( int i = 0; i < frame_number; i++ ) {
             current_packet_size = pkt_stack.getRemainingSpace();
-            //nvtxRangePushA("encodingSession");
-            //SaveBufferRGB(img_stack.getBufferHandle(i), width, height, "test.pgm");
-            //if ( i == 40 ) {
-            if (false) {
-                printf ("update frame rate");
-                nvpipe_set_bitrate(codec, 50000);
+            
+            if ( flag )
+                nvtxRangePushA("encodingSession");
+            
+            if ( (iteration & 1) == 0 ) {
+                index = i;
+            } else {
+                index = frame_number - i - 1;
             }
-            printf( "image %d handle: %zu, %zu\n", i, img_stack.getBufferHandle(i), image_size);
-            printf( "packet index: %d, ptr: %d, size: %zu\n", i, ptr, current_packet_size);
+            
+            //printf ("%d, %d\n", i, index);
+            
             nvpipe_encode(  codec,
-                            img_stack.getBufferHandle(i), image_size,
-                            pkt_stack.getBufferHandle(i), &current_packet_size,
+                            img_stack.getBufferHandle(index), image_size,
+                            pkt_stack.getBufferHandle(), &current_packet_size,
                             width, height,
                             NVPIPE_IMAGE_FORMAT_RGB);
             pkt_stack.pushBuffer(current_packet_size);
-            //nvtxRangePop();
+            if ( flag )
+                nvtxRangePop();
+            else
+                flag = true;
+
+            if ( i == frame_number - 2 && iteration < repeat-1 ) {
+                iteration++;
+                i = -1;
+            }
         }
         cudaProfilerStop();
         /***encoding timing ended************************/
 
+        printf ("   image frame count: %d, memory usage: size: %zu\n", 
+                    img_stack.getSize(),
+                    img_stack.getUsedSpace());
         printf ("   packet size: %d, memory usage: %zu\n", 
                 pkt_stack.getSize(), 
                 pkt_stack.getUsedSpace() );
+        double ratio = pkt_stack.getUsedSpace();
+        ratio *= img_stack.getSize();
+        ratio /= img_stack.getUsedSpace();
+        ratio /= pkt_stack.getSize();
+        printf ("   compression ratio: %lf\n", ratio);
 
-        for ( int i = 0; i < pkt_stack.getSize(); i++ ) {
-            printf("      packet index: %d, size: %zu\n",
-                    i, pkt_stack.getBufferSize(i));
+        //for ( int i = 0; i < pkt_stack.getSize(); i++ ) {
+        //    printf("      packet index: %d, size: %zu\n",
+        //            i, pkt_stack.getBufferSize(i));
+        //}
+        if ( output_file ) {
+            sprintf(file_name, "%s.264", output_file);
+            pkt_stack.writeBufferToFile(file_name);
         }
 
-        pkt_stack.writeBufferToFile("output.264");
-        
     }
 
     if ( decoding_flag ) {
-
+        int index = 0;
+        bool flag = !discard_initial_timer;
         int decode_width = width;
         int decode_height = height;
         if ( !encoding_flag ) {
@@ -231,26 +279,35 @@ int main( int argc, char* argv[] ) {
          *  decoding timing!
          ************************************************/
         cudaProfilerStart();
-        for ( int i = 0; i < frame_number; i++ ) {
+        for ( int i = 0; i < pkt_stack.getSize(); i++ ) {
             current_packet_size = pkt_stack.getBufferSize(i);
-            nvtxRangePushA("decodingSession");
+            if ( flag ) {
+                nvtxRangePushA("decodingSession");
+            }
+            
+            index = i % frame_number;
             nvpipe_decode(  codec,
                             pkt_stack.getBufferHandle(i), current_packet_size,
-                            img_stack.getBufferHandle(i), image_size,
+                            img_stack.getBufferHandle(index), image_size,
                             &decode_width, &decode_height,
                             NVPIPE_IMAGE_FORMAT_RGB);
-            nvtxRangePop();
+            if ( flag )
+                nvtxRangePop();
+            else
+                flag = true;
+
+            
         }
         cudaProfilerStop();
-        /***encoding timing ended************************/
-        if ( output_file ) {
+        /***decoding timing ended************************/
+
+        if ( output_file && save_image_flag ) {
             sprintf(file_name, "%s_decoded", output_file);
             img_stack.writeBufferToFileList(file_name,
                                             RGB_PICTURE,
                                             decode_width,
                                             decode_height);
         }
-
     }
 
     free(img_buffer);

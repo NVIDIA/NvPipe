@@ -49,6 +49,25 @@ void SaveBufferBit(uint8_t *data, size_t length, const char *str) {
     fclose(pFile);
 }
 
+size_t ReadFromFile(std::string file_name, void* data, size_t size) {
+    FILE *pFile;
+    size_t read_size;
+    // Open file
+    pFile=fopen(file_name.c_str(), "rb");
+
+    if(pFile==NULL)
+        return 0;
+
+    // read data
+    read_size = fread(data, 1, size, pFile);
+
+    // Close file
+    fclose(pFile);
+
+    return read_size;
+}
+
+
 MemoryStack::MemoryStack(uint8_t *buffer, size_t buffer_size) {
     initialize(buffer, buffer_size);
 }
@@ -131,13 +150,19 @@ void MemoryStack::writeBufferToFileList( std::string file_name,
     for ( int i = 0; i < getSize(); i++ ) {
         switch(buffer_type) {
         case RGB_PICTURE:
-            sprintf(str, "%s_%d.pgm", file_name.c_str(), i);
+            sprintf(str, "%s%d.pgm", file_name.c_str(), i);
             SaveBufferRGB(  stackItemVector_[i].ptr_, 
                             width, height, 
                             str);
             break;
+        case PLAIN_DATA:
+            sprintf(str, "%s%d", file_name.c_str(), i);
+            SaveBufferBit(  stackItemVector_[i].ptr_,
+                            stackItemVector_[i].size_,
+                            str);
+            break;
         case PACKET_DATA:
-            sprintf(str, "%s_%d.pkt", file_name.c_str(), i);
+            sprintf(str, "%s%d.pkt", file_name.c_str(), i);
             SaveBufferBit(  stackItemVector_[i].ptr_,
                             stackItemVector_[i].size_,
                             str);
@@ -145,3 +170,32 @@ void MemoryStack::writeBufferToFileList( std::string file_name,
         }
     }
 }
+
+void MemoryStack::loadBufferFromFileList( 
+                    std::string file_name, enum Buffer_Type buffer_type,
+                    int length) {
+    std::string str_template = file_name;
+    switch(buffer_type) {
+    case PLAIN_DATA:
+        str_template = str_template + "%d";
+        break;
+    case RGB_PICTURE:
+        str_template = str_template + "%d.pgm";
+        break;
+    case PACKET_DATA:
+        str_template = str_template + "%d.pkt";
+        break;
+    }
+    
+    //printf( "%s, %s\n", file_name.c_str(), str_template.c_str() );
+
+    char str[50];
+    size_t bufferSize;
+    for ( int i = 0; i < length; i++ ) {
+        sprintf(str, str_template.c_str(), i);
+        bufferSize = ReadFromFile(  str, getBufferHandle(), 
+                                        getRemainingSpace() );
+        pushBuffer(bufferSize);
+    }
+}
+

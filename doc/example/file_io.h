@@ -13,12 +13,15 @@ void SaveBufferRGB(uint8_t *data, int width, int height, const char *str);
 
 void SaveBufferBit(uint8_t *data, size_t length, const char *str);
 
+size_t ReadFromFile(std::string file_name, void *data, size_t size);
+
 typedef struct _memoryObj {
     size_t size_;
     uint8_t *ptr_;
 } memoryObj;
 
 enum Buffer_Type {
+    PLAIN_DATA,
     RGB_PICTURE,
     PACKET_DATA
 };
@@ -35,6 +38,9 @@ public:
     void writeBufferToFileList( std::string file_name,
                                 enum Buffer_Type buffer_type,
                                 int width = 0, int height = 0);
+    void loadBufferFromFileList( std::string file_name,
+                                    enum Buffer_Type buffer_type,
+                                    int length);
 
     uint8_t* getBufferHandle();
     uint8_t* getBufferHandle( int index );
