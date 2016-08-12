@@ -1,0 +1,3 @@
+add_library(nvpipe STATIC IMPORTED)
+find_library(NVPIPE_LIBRARY_PATH nvpipe HINTS "${CMAKE_INSTALL_PREFIX}/lib/"}
+set_target_properties(nvpipe PROPERTIES IMPORTED_LOCATION "@NVPIPE_LIBRARY_PATH@")

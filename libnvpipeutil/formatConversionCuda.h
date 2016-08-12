@@ -38,11 +38,19 @@ cudaError launch_CudaARGB2NV12Process(  int w, int h,
                                         CUdeviceptr pARGBImage, 
                                         CUdeviceptr pNV12Image);
 
-cudaError launch_CudaNV12TOARGBProcess(  int w, int h, 
+cudaError launch_CudaNV12TOARGBProcess( int w, int h, 
                                         CUdeviceptr pNV12Image, 
                                         CUdeviceptr pARGBImage);
 
-cudaError launch_CudaRGB2NV12Process(  int w, int h, 
+cudaError launch_CudaRGBA2NV12Process(  int w, int h, 
+                                        CUdeviceptr pARGBImage, 
+                                        CUdeviceptr pNV12Image);
+
+cudaError launch_CudaNV12TORGBAProcess( int w, int h, 
+                                        CUdeviceptr pNV12Image, 
+                                        CUdeviceptr pARGBImage);
+
+cudaError launch_CudaRGB2NV12Process(   int w, int h, 
                                         CUdeviceptr pRGBImage, 
                                         CUdeviceptr pNV12Image);
 
@@ -51,6 +59,11 @@ cudaError launch_CudaNV12TORGBProcess(  int w, int h,
                                         CUdeviceptr pRGBImage);
 
 cudaError launch_CudaNV12TORGBProcessDualChannel( int w, int h,
+                                        CUdeviceptr pYPlane,
+                                        CUdeviceptr pUVPlane,
+                                        CUdeviceptr pRGBImage);
+
+cudaError launch_CudaNV12TORGBAProcessDualChannel( int w, int h,
                                         CUdeviceptr pYPlane,
                                         CUdeviceptr pUVPlane,
                                         CUdeviceptr pRGBImage);

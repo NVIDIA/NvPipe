@@ -147,25 +147,35 @@ int formatConversion(   int w, int h,
     switch ( conversionEnum ) {
     case NVPIPE_IMAGE_FORMAT_CONVERSION_NULL:
         return -1;
-    case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
-        sourceSize = sizeof(uint8_t)*w*h*4;
-        destinationSize = sizeof(uint8_t)*w*h*3/2;
-        funcPtr = &launch_CudaARGB2NV12Process;
-        break;
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
         sourceSize = sizeof(uint8_t)*w*h*3;
         destinationSize = sizeof(uint8_t)*w*h*3/2;
         funcPtr = &launch_CudaRGB2NV12Process;
         break;
-    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB:
-        sourceSize = sizeof(uint8_t)*w*h*3/2;
-        destinationSize = sizeof(uint8_t)*w*h*4;
-        funcPtr = &launch_CudaNV12TOARGBProcess;
-        break;
     case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB:
         sourceSize = sizeof(uint8_t)*w*h*3/2;
         destinationSize = sizeof(uint8_t)*w*h*3;
         funcPtr = &launch_CudaNV12TORGBProcess;
+        break;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12:
+        sourceSize = sizeof(uint8_t)*w*h*4;
+        destinationSize = sizeof(uint8_t)*w*h*3/2;
+        funcPtr = &launch_CudaRGBA2NV12Process;
+        break;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGBA:
+        sourceSize = sizeof(uint8_t)*w*h*3/2;
+        destinationSize = sizeof(uint8_t)*w*h*4;
+        funcPtr = &launch_CudaNV12TORGBAProcess;
+        break;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
+        sourceSize = sizeof(uint8_t)*w*h*4;
+        destinationSize = sizeof(uint8_t)*w*h*3/2;
+        funcPtr = &launch_CudaARGB2NV12Process;
+        break;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB:
+        sourceSize = sizeof(uint8_t)*w*h*3/2;
+        destinationSize = sizeof(uint8_t)*w*h*4;
+        funcPtr = &launch_CudaNV12TOARGBProcess;
         break;
     default:
         return -1;
@@ -214,14 +224,14 @@ int formatConversionReuseMemory(   int w, int h,
     switch ( conversionEnum ) {
     case NVPIPE_IMAGE_FORMAT_CONVERSION_NULL:
         return -1;
-    case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
-        sourceSize = sizeof(uint8_t)*w*h*4;
-        destinationSize = sizeof(uint8_t)*w*h*3/2;
-        smallBuffer = &d_destinationPtr;
-        smallBufferSize = destinationSize;
-        largeBuffer = &d_sourcePtr;
-        largeBufferSize = sourceSize;
-        funcPtr = &launch_CudaARGB2NV12Process;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB:
+        sourceSize = sizeof(uint8_t)*w*h*3/2;
+        destinationSize = sizeof(uint8_t)*w*h*3;
+        smallBuffer = &d_sourcePtr;
+        smallBufferSize = sourceSize;
+        largeBuffer = &d_destinationPtr;
+        largeBufferSize = destinationSize;
+        funcPtr = &launch_CudaNV12TORGBProcess;
         break;
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
         sourceSize = sizeof(uint8_t)*w*h*3;
@@ -232,6 +242,24 @@ int formatConversionReuseMemory(   int w, int h,
         largeBufferSize = sourceSize;
         funcPtr = &launch_CudaRGB2NV12Process;
         break;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGBA:
+        sourceSize = sizeof(uint8_t)*w*h*3/2;
+        destinationSize = sizeof(uint8_t)*w*h*4;
+        smallBuffer = &d_sourcePtr;
+        smallBufferSize = sourceSize;
+        largeBuffer = &d_destinationPtr;
+        largeBufferSize = destinationSize;
+        funcPtr = &launch_CudaNV12TORGBAProcess;
+        break;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12:
+        sourceSize = sizeof(uint8_t)*w*h*4;
+        destinationSize = sizeof(uint8_t)*w*h*3/2;
+        smallBuffer = &d_destinationPtr;
+        smallBufferSize = destinationSize;
+        largeBuffer = &d_sourcePtr;
+        largeBufferSize = sourceSize;
+        funcPtr = &launch_CudaRGBA2NV12Process;
+        break;
     case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB:
         sourceSize = sizeof(uint8_t)*w*h*3/2;
         destinationSize = sizeof(uint8_t)*w*h*4;
@@ -241,14 +269,14 @@ int formatConversionReuseMemory(   int w, int h,
         largeBufferSize = destinationSize;
         funcPtr = &launch_CudaNV12TOARGBProcess;
         break;
-    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB:
-        sourceSize = sizeof(uint8_t)*w*h*3/2;
-        destinationSize = sizeof(uint8_t)*w*h*3;
-        smallBuffer = &d_sourcePtr;
-        smallBufferSize = sourceSize;
-        largeBuffer = &d_destinationPtr;
-        largeBufferSize = destinationSize;
-        funcPtr = &launch_CudaNV12TORGBProcess;
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
+        sourceSize = sizeof(uint8_t)*w*h*4;
+        destinationSize = sizeof(uint8_t)*w*h*3/2;
+        smallBuffer = &d_destinationPtr;
+        smallBufferSize = destinationSize;
+        largeBuffer = &d_sourcePtr;
+        largeBufferSize = sourceSize;
+        funcPtr = &launch_CudaARGB2NV12Process;
         break;
     default:
         return -1;
@@ -336,6 +364,12 @@ int formatConversionAVFrameRGBReuseMemory( AVFrame *frame,
             return ret;
             break;
         }
+    case AV_PIX_FMT_RGBA:
+        {
+            printf("not supported yet\n");
+            break;
+        }
+
     case AV_PIX_FMT_ARGB:
         {
             printf("not supported yet\n");
@@ -387,7 +421,11 @@ int formatConversionAVFrameRGB( AVFrame *frame,
             checkCudaErrors(
                 cudaMemcpy( buffer, d_bufferPtr, 
                 sizeof(uint8_t)*w*h*3, cudaMemcpyDeviceToHost ));
-
+            
+            checkCudaErrors(cudaFree(d_bufferPtr));
+            checkCudaErrors(cudaFree(d_YPtr));
+            checkCudaErrors(cudaFree(d_UVPtr));
+            
             return ret;
             break;
         }
@@ -405,6 +443,135 @@ int formatConversionAVFrameRGB( AVFrame *frame,
     return 0;
 }
 
+int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, 
+                                void *buffer,
+                                nvpipeMemGpu2 *mem_gpu2) {
+
+    switch( frame->format ) {
+    case AV_PIX_FMT_NV12:
+        {
+            unsigned int * d_YPtr;
+            unsigned int * d_UVPtr;
+            unsigned int * d_bufferPtr;
+            
+            int w = frame->width;
+            int h = frame->height;
+
+            size_t pixel_count = w * h * sizeof(uint8_t);
+
+            if (pixel_count*4 > mem_gpu2->d_buffer_1_size_ ||
+                pixel_count*3/2 > mem_gpu2->d_buffer_2_size_ ) {
+                printf("mem reallocate!\n");
+                allocateMemGpu2(mem_gpu2,
+                                pixel_count*4,
+                                pixel_count*3/2);
+            }
+
+            d_bufferPtr = mem_gpu2->d_buffer_1_;
+            d_YPtr = mem_gpu2->d_buffer_2_;
+
+            //Alert!
+            //  ugly coade ahead: 
+            //  pixel_count/4 because CUDA offset is per word!
+            d_UVPtr = mem_gpu2->d_buffer_2_ + pixel_count/4;
+
+            checkCudaErrors(
+                cudaMemcpy( d_YPtr, frame->data[0], sizeof(uint8_t)*w*h, 
+                            cudaMemcpyHostToDevice ));
+            checkCudaErrors(
+                cudaMemcpy( d_UVPtr, frame->data[1], sizeof(uint8_t)*w*h/2, 
+                            cudaMemcpyHostToDevice ));
+            
+            int ret =   launch_CudaNV12TORGBAProcessDualChannel(
+                    frame->width, frame->height,
+                    (CUdeviceptr) d_YPtr,
+                    (CUdeviceptr) d_UVPtr,
+                    (CUdeviceptr) d_bufferPtr);
+
+            checkCudaErrors(
+                cudaMemcpy( buffer, d_bufferPtr, 
+                sizeof(uint8_t)*w*h*4, cudaMemcpyDeviceToHost ));
+
+            return ret;
+            break;
+        }
+    case AV_PIX_FMT_RGBA:
+        {
+            printf("not supported yet\n");
+            break;
+        }
+
+    case AV_PIX_FMT_ARGB:
+        {
+            printf("not supported yet\n");
+            break;
+        }
+    default:
+        {
+            printf("default?\n");
+            break;
+        }
+    }
+    return 0;
+}
+
+int formatConversionAVFrameRGBA( AVFrame *frame, 
+                                void *buffer) {
+
+    switch( frame->format ) {
+    case AV_PIX_FMT_NV12:
+        {
+            unsigned int * d_YPtr;
+            unsigned int * d_UVPtr;
+            unsigned int * d_bufferPtr;
+            
+            int w = frame->width;
+            int h = frame->height;
+
+            size_t pixel_count = w * h * sizeof(uint8_t);
+            checkCudaErrors(
+                cudaMalloc( (void **) &(d_bufferPtr), pixel_count*4));
+            checkCudaErrors(
+                cudaMalloc( (void **) &(d_YPtr), pixel_count));
+            checkCudaErrors(
+                cudaMalloc( (void **) &(d_UVPtr), pixel_count/2));
+
+            checkCudaErrors(
+                cudaMemcpy( d_YPtr, frame->data[0], sizeof(uint8_t)*w*h, 
+                            cudaMemcpyHostToDevice ));
+            checkCudaErrors(
+                cudaMemcpy( d_UVPtr, frame->data[1], sizeof(uint8_t)*w*h/2, 
+                            cudaMemcpyHostToDevice ));
+            
+            int ret =   launch_CudaNV12TORGBAProcessDualChannel(
+                    frame->width, frame->height,
+                    (CUdeviceptr) d_YPtr,
+                    (CUdeviceptr) d_UVPtr,
+                    (CUdeviceptr) d_bufferPtr);
+
+            checkCudaErrors(
+                cudaMemcpy( buffer, d_bufferPtr, 
+                sizeof(uint8_t)*w*h*4, cudaMemcpyDeviceToHost ));
+
+            checkCudaErrors(cudaFree(d_bufferPtr));
+            checkCudaErrors(cudaFree(d_YPtr));
+            checkCudaErrors(cudaFree(d_UVPtr));
+            return ret;
+            break;
+        }
+    case AV_PIX_FMT_ARGB:
+        {
+            printf("not supported yet\n");
+            break;
+        }
+    default:
+        {
+            printf("default?\n");
+            break;
+        }
+    }
+    return 0;
+}
 
 void destroyMemGpu2(nvpipeMemGpu2 *mem_gpu) {
     if ( mem_gpu->d_buffer_1_ ) {

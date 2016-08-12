@@ -23,12 +23,26 @@
 #pragma once
 
 #include <stdlib.h>
-#include "libnvpipeutil/format.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+
+enum NVPipeCodecID {
+    NVPIPE_CODEC_ID_NULL,
+    NVPIPE_CODEC_ID_H264
+};
+
+enum NVPipeImageFormat {
+    NVPIPE_IMAGE_FORMAT_NULL,
+    NVPIPE_IMAGE_FORMAT_RGB,
+    NVPIPE_IMAGE_FORMAT_ARGB,
+    NVPIPE_IMAGE_FORMAT_RGBA,
+    NVPIPE_IMAGE_FORMAT_YUV420P,
+    NVPIPE_IMAGE_FORMAT_YUV444P,
+    NVPIPE_IMAGE_FORMAT_NV12
+};
 
 typedef struct _nvpipe {
     enum NVPipeCodecID type_;

@@ -189,6 +189,7 @@ int NvPipeCodec264::encode( void* buffer,
 
         switch ( encoder_conversion_flag_ ) {
             case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
+            case NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12:
             case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
                 if ( encoder_converted_image_buffer_size_ < 
                                                 num_pixels * 3 / 2 ) {
@@ -228,6 +229,7 @@ int NvPipeCodec264::encode( void* buffer,
     switch ( encoder_conversion_flag_ ) {
     case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12:
         //formatConversion(width_, height_, 
         //                frame_, encoder_converted_image_buffer_,
         //                encoder_conversion_flag_);
@@ -395,7 +397,24 @@ int NvPipeCodec264::decode( void* output_picture,
         frameSize *= height;
         frameSize *= 4;
         break;
-
+    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGBA:
+        frameSize = width;
+        frameSize *= height;
+        frameSize *= 4;
+        if (frameSize > output_size ) {
+            output_size = frameSize;
+            av_packet_unref(&decoder_packet_);
+            printf("frame size larger than frame_buffer_size_,\
+                    something went wrong!\n");
+            return -1;
+        }
+        output_size = frameSize;
+        formatConversionAVFrameRGBAReuseMemory( decoder_frame_,
+                                                output_picture,
+                                                &memgpu2_);
+        av_packet_unref(&decoder_packet_);
+        return 0;
+        break;
     case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB:
         frameSize = width;
         frameSize *= height;
@@ -484,7 +503,12 @@ int NvPipeCodec264::getFormatConversionEnum(
             NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12 :
             NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB;
         break;
-
+    case NVPIPE_IMAGE_FORMAT_RGBA:
+        pixel_format = AV_PIX_FMT_NV12;
+        conversion_flag = encoder_flag ?
+            NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12 :
+            NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGBA;
+        break;
     case NVPIPE_IMAGE_FORMAT_RGB:
         pixel_format = AV_PIX_FMT_NV12;
         conversion_flag = encoder_flag ?

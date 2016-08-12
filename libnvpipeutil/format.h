@@ -24,25 +24,13 @@
 #pragma once
 
 #include <stdlib.h>
-#include <libavformat/avformat.h>
+#include "libavformat/avformat.h"
+#include "nvpipe.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-enum NVPipeCodecID {
-    NVPIPE_CODEC_ID_NULL,
-    NVPIPE_CODEC_ID_H264
-};
-
-enum NVPipeImageFormat {
-    NVPIPE_IMAGE_FORMAT_NULL,
-    NVPIPE_IMAGE_FORMAT_RGB,
-    NVPIPE_IMAGE_FORMAT_ARGB,
-    NVPIPE_IMAGE_FORMAT_YUV420P,
-    NVPIPE_IMAGE_FORMAT_YUV444P,
-    NVPIPE_IMAGE_FORMAT_NV12
-};
 
 /*!
  *  NVPIPE_IMAGE_FORMAT_CONVERSION_X_TO_Y
@@ -55,12 +43,13 @@ enum NVPipeImageFormatConversion {
     NVPIPE_IMAGE_FORMAT_CONVERSION_NULL,
     NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12,
     NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB,
+    NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12,
     NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB,
-    NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12
+    NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGBA,
+    NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12
 };
 
 typedef struct _nvpipeMemGpu2 {
-
     unsigned int* d_buffer_1_;
     unsigned int* d_buffer_2_;
     size_t d_buffer_1_size_;
@@ -90,6 +79,14 @@ int formatConversionAVFrameRGB( AVFrame *frame,
 int formatConversionAVFrameRGBReuseMemory( AVFrame *frame,
                                 void *buffer,
                                 nvpipeMemGpu2 *mem_gpu2);
+
+int formatConversionAVFrameRGBA( AVFrame *frame,
+                                 void *buffer);
+
+int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame,
+                                void *buffer,
+                                nvpipeMemGpu2 *mem_gpu2);
+
 #ifdef __cplusplus
 }
 #endif
