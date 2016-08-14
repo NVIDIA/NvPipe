@@ -97,8 +97,8 @@ __global__ static void CudaProcessARGB2UV(int w, int h, uchar4 * pARGBImage, uns
   unsigned int fj = j*2;//full size image j
   unsigned int fw = w*2;//full size image w
   unsigned int fh = h*2;//full size image h
-  unsigned int u_idx = i*2 + 1 + j*w*2;
-  unsigned int v_idx = i*2 + j*w*2;
+  unsigned int u_idx = i*2 + j*w*2;
+  unsigned int v_idx = i*2 + j*w*2 + 1;
   if(fi<fw-1 && fj<fh-1)
   {
     uchar4 argb1=pARGBImage[fj*fw+fi];
@@ -129,8 +129,8 @@ __global__ static void CudaProcessRGBA2UV(int w, int h, uchar4 * pRGBAImage, uns
   unsigned int fj = j*2;//full size image j
   unsigned int fw = w*2;//full size image w
   unsigned int fh = h*2;//full size image h
-  unsigned int u_idx = i*2 + 1 + j*w*2;
-  unsigned int v_idx = i*2 + j*w*2;
+  unsigned int u_idx = i*2 + j*w*2;
+  unsigned int v_idx = i*2 + j*w*2 + 1;
   if(fi<fw-1 && fj<fh-1)
   {
     uchar4 rgba1=pRGBAImage[fj*fw+fi];
@@ -162,8 +162,8 @@ __global__ static void CudaProcessRGB2UV(int w, int h, uchar3 * pRGBImage, unsig
   unsigned int fj = j*2;//full size image j
   unsigned int fw = w*2;//full size image w
   unsigned int fh = h*2;//full size image h
-  unsigned int u_idx = i*2 + 1 + j*w*2;
-  unsigned int v_idx = i*2 + j*w*2;
+  unsigned int u_idx = i*2 + j*w*2;
+  unsigned int v_idx = i*2 + j*w*2 + 1;
   if(fi<fw-1 && fj<fh-1)
   {
     uchar3 rgb1=pRGBImage[fj*fw+fi];
@@ -192,8 +192,8 @@ __global__ static void CudaProcessNV122ARGB(int w, int h, unsigned char * pNV12I
   unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
   if(i<w && j<h)
   {
-    unsigned int v_idx = (j/2*w/2 + i/2)*2; // ( j/2*w/2 + i/2 ) * 2;
-    unsigned int u_idx = v_idx + 1;
+    unsigned int u_idx = (j/2*w/2 + i/2)*2;
+    unsigned int v_idx = u_idx + 1;
     
     unsigned int offset_idx = w*h;
     unsigned int pixel_idx = j*w+i;
@@ -230,8 +230,8 @@ __global__ static void CudaProcessNV122RGBA(int w, int h, unsigned char * pNV12I
   unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
   if(i<w && j<h)
   {
-    unsigned int v_idx = (j/2*w/2 + i/2)*2; // ( j/2*w/2 + i/2 ) * 2;
-    unsigned int u_idx = v_idx + 1;
+    unsigned int u_idx = (j/2*w/2 + i/2)*2;
+    unsigned int v_idx = u_idx + 1;
     
     unsigned int offset_idx = w*h;
     unsigned int pixel_idx = j*w+i;
@@ -268,9 +268,8 @@ __global__ static void CudaProcessNV122RGB(int w, int h, unsigned char * pNV12Im
   unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
   if(i<w && j<h)
   {
-    unsigned int v_idx = (j/2*w/2 + i/2)*2; // ( j/2*w/2 + i/2 ) * 2;
-    unsigned int u_idx = v_idx + 1;
-
+    unsigned int u_idx = (j/2*w/2 + i/2)*2;
+    unsigned int v_idx = u_idx + 1;
     unsigned int offset_idx = w*h;
     unsigned int pixel_idx = j*w+i;
     unsigned int channel = threadIdx.z;
@@ -303,9 +302,8 @@ __global__ static void CudaProcessAVFrameNV122RGB(int w, int h, unsigned char * 
   unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
   if(i<w && j<h)
   {
-    unsigned int v_idx = (j/2*w/2 + i/2)*2; // ( j/2*w/2 + i/2 ) * 2;
-    unsigned int u_idx = v_idx + 1;
-
+    unsigned int u_idx = (j/2*w/2 + i/2)*2;
+    unsigned int v_idx = u_idx + 1;
     unsigned int pixel_idx = j*w+i;
     unsigned int channel = threadIdx.z;
     
@@ -338,9 +336,8 @@ __global__ static void CudaProcessAVFrameNV122RGBA(int w, int h, unsigned char *
   unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
   if(i<w && j<h)
   {
-    unsigned int v_idx = (j/2*w/2 + i/2)*2; // ( j/2*w/2 + i/2 ) * 2;
-    unsigned int u_idx = v_idx + 1;
-
+    unsigned int u_idx = (j/2*w/2 + i/2)*2;
+    unsigned int v_idx = u_idx + 1;
     unsigned int pixel_idx = j*w+i;
     unsigned int channel = threadIdx.z;
     
@@ -360,6 +357,41 @@ __global__ static void CudaProcessAVFrameNV122RGBA(int w, int h, unsigned char *
         pRGBAImage[w*j+i].z = clamp(
                                 (pYImage[pixel_idx]-16) * 1.164 +
                                 (pUVImage[u_idx]-128) * 2.017 +
+                                0
+                                , 0, 255);
+    } else if ( channel == 4) {
+        pRGBAImage[w*j+i].w = 255;
+    }
+  }
+}
+
+__global__ static void CudaProcessYUV420P2RGBA(int w, int h, unsigned char * pYImage, unsigned char * pUImage, unsigned char * pVImage, uchar4 * pRGBAImage)
+{
+  unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
+  unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
+  if(i<w && j<h)
+  {
+    unsigned int uv_idx = j/2*w/2 + i/2;
+
+    unsigned int pixel_idx = j*w+i;
+    unsigned int channel = threadIdx.z;
+    
+    if ( channel == 1) {
+        pRGBAImage[w*j+i].x = clamp(
+                                (pYImage[pixel_idx]-16) * 1.164 +
+                                0 +
+                                (pVImage[uv_idx]-128) * 1.596
+                                , 0, 255);
+    } else if ( channel == 2) {
+        pRGBAImage[w*j+i].y = clamp(
+                                (pYImage[pixel_idx]-16) * 1.164 +
+                                (pUImage[uv_idx]-128) * -0.392 +
+                                (pVImage[uv_idx]-128) * -0.813
+                                , 0, 255);
+    } else if ( channel == 3) {
+        pRGBAImage[w*j+i].z = clamp(
+                                (pYImage[pixel_idx]-16) * 1.164 +
+                                (pUImage[uv_idx]-128) * 2.017 +
                                 0
                                 , 0, 255);
     } else if ( channel == 4) {
@@ -462,14 +494,24 @@ extern "C"
     return err;
   }
 
-  cudaError launch_CudaNV12TORGBAProcessDualChannel( int w, int h, CUdeviceptr pYPlane, CUdeviceptr pUVPlane, CUdeviceptr pRGBImage) {
+  cudaError launch_CudaNV12TORGBAProcessDualChannel( int w, int h, CUdeviceptr pYPlane, CUdeviceptr pUVPlane, CUdeviceptr pRGBAImage) {
     {
       dim3 dimBlock(16, 16, 4);
       dim3 dimGrid(((w)+dimBlock.x-1)/dimBlock.x, ((h)+dimBlock.y-1)/dimBlock.y, 1);
-      CudaProcessAVFrameNV122RGBA<<<dimGrid, dimBlock>>>(w, h, (unsigned char *)pYPlane, (unsigned char *)pUVPlane, (uchar4 *)pRGBImage);
+      CudaProcessAVFrameNV122RGBA<<<dimGrid, dimBlock>>>(w, h, (unsigned char *)pYPlane, (unsigned char *)pUVPlane, (uchar4 *)pRGBAImage);
     }
     cudaError err = cudaGetLastError();                                
     return err;
   }
+  cudaError launch_CudaYUV420PTORGBAProcessTriChannel( int w, int h, CUdeviceptr pYPlane, CUdeviceptr pUPlane, CUdeviceptr pVPlane, CUdeviceptr pRGBAImage) {
+    {
+      dim3 dimBlock(16, 16, 4);
+      dim3 dimGrid(((w)+dimBlock.x-1)/dimBlock.x, ((h)+dimBlock.y-1)/dimBlock.y, 1);
+      CudaProcessYUV420P2RGBA<<<dimGrid, dimBlock>>>(w, h, (unsigned char *)pYPlane, (unsigned char *)pUPlane, (unsigned char *)pVPlane, (uchar4 *)pRGBAImage);
+    }
+    cudaError err = cudaGetLastError();                                
+    return err;
+  }
+
 
 }

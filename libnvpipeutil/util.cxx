@@ -350,7 +350,7 @@ int formatConversionAVFrameRGBReuseMemory( AVFrame *frame,
             checkCudaErrors(
                 cudaMemcpy( d_UVPtr, frame->data[1], sizeof(uint8_t)*w*h/2, 
                             cudaMemcpyHostToDevice ));
-            
+
             int ret =   launch_CudaNV12TORGBProcessDualChannel(
                     frame->width, frame->height,
                     (CUdeviceptr) d_YPtr,
@@ -366,18 +366,18 @@ int formatConversionAVFrameRGBReuseMemory( AVFrame *frame,
         }
     case AV_PIX_FMT_RGBA:
         {
-            printf("not supported yet\n");
+            printf("formatConversionAVFrameRGBReuseMemory AVFrame frame->format not supported yet\n");
             break;
         }
 
     case AV_PIX_FMT_ARGB:
         {
-            printf("not supported yet\n");
+            printf("formatConversionAVFrameRGBReuseMemory AVFrame frame->format not supported yet\n");
             break;
         }
     default:
         {
-            printf("default?\n");
+            printf("formatConversionAVFrameRGBReuseMemory AVFrame frame->format default?\n");
             break;
         }
     }
@@ -431,12 +431,12 @@ int formatConversionAVFrameRGB( AVFrame *frame,
         }
     case AV_PIX_FMT_ARGB:
         {
-            printf("not supported yet\n");
+            printf("formatConversionAVFrameRGB AVFrame frame->format not supported yet\n");
             break;
         }
     default:
         {
-            printf("default?\n");
+            printf("formatConversionAVFrameRGB AVFrame frame->format = default?\n");
             break;
         }
     }
@@ -497,18 +497,81 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame,
         }
     case AV_PIX_FMT_RGBA:
         {
-            printf("not supported yet\n");
+            printf("formatConversionAVFrameRGBAReuseMemory AVFrame frame->format not supported yet\n");
             break;
         }
 
     case AV_PIX_FMT_ARGB:
         {
-            printf("not supported yet\n");
+            printf("formatConversionAVFrameRGBAReuseMemory AVFrame frame->format not supported yet\n");
+            break;
+        }
+    // hacking starts here:
+    case AV_PIX_FMT_YUV420P:
+        {
+            printf("yuv420p\n");
+            printf("size: %d\n", frame->linesize[0]);
+            printf("size: %d\n", frame->linesize[1]);
+            printf("size: %d\n", frame->linesize[2]);
+            printf("size: %d\n", frame->linesize[3]);
+            printf("data: %p\n", frame->data[0]);
+            printf("data: %p\n", frame->data[1]);
+            printf("data: %p\n", frame->data[2]);
+            printf("data: %p\n", frame->data[3]);
+            unsigned int * d_YPtr;
+            unsigned int * d_UPtr;
+            unsigned int * d_VPtr;
+            unsigned int * d_bufferPtr;
+            
+            int w = frame->width;
+            int h = frame->height;
+
+            size_t pixel_count = w * h * sizeof(uint8_t);
+
+            if (pixel_count*4 > mem_gpu2->d_buffer_1_size_ ||
+                pixel_count*3/2 > mem_gpu2->d_buffer_2_size_ ) {
+                printf("mem reallocate!\n");
+                allocateMemGpu2(mem_gpu2,
+                                pixel_count*4,
+                                pixel_count*3/2);
+            }
+
+            d_bufferPtr = mem_gpu2->d_buffer_1_;
+            d_YPtr = mem_gpu2->d_buffer_2_;
+
+            //Alert!
+            //  ugly coade ahead: 
+            //  pixel_count/4 because CUDA offset is per word!
+            d_UPtr = mem_gpu2->d_buffer_2_ + pixel_count/4;
+            d_VPtr = d_UPtr + pixel_count/16;
+
+            checkCudaErrors(
+                cudaMemcpy( d_YPtr, frame->data[0], sizeof(uint8_t)*w*h, 
+                            cudaMemcpyHostToDevice ));
+            checkCudaErrors(
+                cudaMemcpy( d_UPtr, frame->data[1], sizeof(uint8_t)*w*h/4, 
+                            cudaMemcpyHostToDevice ));
+            checkCudaErrors(
+                cudaMemcpy( d_VPtr, frame->data[2], sizeof(uint8_t)*w*h/4, 
+                            cudaMemcpyHostToDevice ));
+
+            int ret =   launch_CudaYUV420PTORGBAProcessTriChannel(
+                    frame->width, frame->height,
+                    (CUdeviceptr) d_YPtr,
+                    (CUdeviceptr) d_UPtr,
+                    (CUdeviceptr) d_VPtr,
+                    (CUdeviceptr) d_bufferPtr);
+
+            checkCudaErrors(
+                cudaMemcpy( buffer, d_bufferPtr, 
+                sizeof(uint8_t)*w*h*4, cudaMemcpyDeviceToHost ));
+
+            return ret;
             break;
         }
     default:
         {
-            printf("default?\n");
+            printf("formatConversionAVFrameRGBAReuseMemory AVFrame frame->format default: %d?\n", frame->format);
             break;
         }
     }
@@ -561,12 +624,18 @@ int formatConversionAVFrameRGBA( AVFrame *frame,
         }
     case AV_PIX_FMT_ARGB:
         {
-            printf("not supported yet\n");
+            printf("formatConversionAVFrameRGBAReuseMemory AVFrame frame->format not supported yet\n");
+            break;
+        }
+    // hacking starts here:
+    case AV_PIX_FMT_YUV420P:
+        {
+            printf("yuv420p\n");
             break;
         }
     default:
         {
-            printf("default?\n");
+            printf("formatConversionAVFrameRGBAReuseMemory AVFrame frame->format default: %d?\n", frame->format);
             break;
         }
     }

@@ -37,6 +37,7 @@ set(NVPIPE "nvpipe")
 
 # some extra lib needed
 add_executable(test_app ${CMAKE_SOURCE_DIR}/doc/example/test.c)
+link_directories($ENV{CUDA_LIBRARY_PATH})
 
 target_link_libraries(test_app ${NVPIPE})
 

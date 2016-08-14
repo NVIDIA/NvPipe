@@ -24,8 +24,8 @@
 #include <cstdio>
 #include <limits>
 
-#define NVPIPE_H264_ENCODER_NAME "h264_nvenc"
-#define NVPIPE_H264_DECODER_NAME "h264_cuvid"
+#define NVPIPE_H264_ENCODER_NAME "libx264"//"h264_nvenc"
+#define NVPIPE_H264_DECODER_NAME "h264"//"h264_cuvid"
 
 NvPipeCodec264::NvPipeCodec264() {
     //printf("nv_codec_h264 created\n");
@@ -576,14 +576,15 @@ int NvPipeCodec264::configureEncoderContext() {
     encoder_context_->height = height_;
     encoder_context_->pix_fmt = encoder_frame_pixel_format_;
     // nvenc private setting
-    av_opt_set(encoder_context_->priv_data,
+    /*av_opt_set(encoder_context_->priv_data,
                 "preset", "llhq", 0);
     av_opt_set(encoder_context_->priv_data,
                 "rc", "ll_2pass_quality", 0);
     av_opt_set_int(encoder_context_->priv_data, "cbr", 1, 0);    
     av_opt_set_int(encoder_context_->priv_data, "2pass", 1, 0);
     av_opt_set_int(encoder_context_->priv_data, "delay", 0, 0);
-
+    */
+    av_opt_set(encoder_context_->priv_data, "tune", "zerolatency", 0);
     if (avcodec_open2(encoder_context_, encoder_codec_, NULL) 
         != 0) {
         printf("cannot open codec\n");

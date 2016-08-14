@@ -41,14 +41,14 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pthread -fPIC")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 -pthread")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -fPIC")
 
-include_directories(${CMAKE_SOURCE_DIR})
-#set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} $ENV{LD_LIBRARY_PATH})
-link_directories($ENV{LD_LIBRARY_PATH})
-
 find_package(CUDA)
 
-cuda_add_library(${NVPIPE} SHARED
-    #cuda_add_library(${NVPIPE}
+include_directories(${CMAKE_SOURCE_DIR})
+#set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} $ENV{LD_LIBRARY_PATH})
+link_directories($ENV{CUDA_LIBRARY_PATH})
+
+#cuda_add_library(${NVPIPE} SHARED
+cuda_add_library(${NVPIPE}
     ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec264.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipeutil/util.cxx

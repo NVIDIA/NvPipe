@@ -66,7 +66,13 @@ cudaError launch_CudaNV12TORGBProcessDualChannel( int w, int h,
 cudaError launch_CudaNV12TORGBAProcessDualChannel( int w, int h,
                                         CUdeviceptr pYPlane,
                                         CUdeviceptr pUVPlane,
-                                        CUdeviceptr pRGBImage);
+                                        CUdeviceptr pRGBAImage);
+
+cudaError launch_CudaYUV420PTORGBAProcessTriChannel( int w, int h,
+                                        CUdeviceptr pYPlane,
+                                        CUdeviceptr pUPlane,
+                                        CUdeviceptr pVPlane,
+                                        CUdeviceptr pRGBAImage);
 
 #ifdef __cplusplus
 }
