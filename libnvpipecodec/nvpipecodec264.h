@@ -37,6 +37,7 @@ extern "C"
 
 #include "libnvpipecodec/nvpipecodec.h"
 #include "libnvpipeutil/formatConversionCuda.h"
+#include <string>
 
 class NvPipeCodec264 : public NvPipeCodec {
 
@@ -44,7 +45,7 @@ public:
     virtual int encode( void* buffer,
                         size_t &size,
                         enum NVPipeImageFormat format);
-    
+
     virtual int decode( void* picture, 
                         int &width, 
                         int &height, 
@@ -98,6 +99,9 @@ private:
     enum NVPipeImageFormatConversion decoder_conversion_flag_;
 
     enum AVPixelFormat encoder_frame_pixel_format_;
+
+    std::string getEncoderName();
+    std::string getDecoderName();
 
     int configureEncoderContext();
 };

@@ -31,7 +31,8 @@ extern "C" {
 
 enum NVPipeCodecID {
     NVPIPE_CODEC_ID_NULL,
-    NVPIPE_CODEC_ID_H264
+    NVPIPE_CODEC_ID_H264_HARDWARE,
+    NVPIPE_CODEC_ID_H264_SOFTWARE
 };
 
 enum NVPipeImageFormat {
@@ -58,7 +59,7 @@ typedef struct _nvpipe {
  *      return a handle to the instance;
  *      used to initiate nvpipe_encode/nvpipe_decode API call
  */
-nvpipe* nvpipe_create_instance(enum NVPipeCodecID);
+nvpipe* nvpipe_create_instance( enum NVPipeCodecID id );
 
 /*  free nvpipe instance
  *      clean up each instance created by nvpipe_create_instance();

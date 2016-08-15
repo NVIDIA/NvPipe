@@ -360,7 +360,9 @@ __global__ static void CudaProcessAVFrameNV122RGBA(int w, int h, unsigned char *
                                 0
                                 , 0, 255);
     } else if ( channel == 4) {
-        pRGBAImage[w*j+i].w = 255;
+        //pRGBAImage[w*j+i].w = 255;
+        // Tom's hack, blame him
+        pRGBAImage[w*j+i].w = 0;
     }
   }
 }

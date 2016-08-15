@@ -26,23 +26,34 @@
 #include "libnvpipecodec/nvpipecodec264.h"
 #include "libnvpipeutil/formatConversionCuda.h"
 
-nvpipe* nvpipe_create_instance( enum NVPipeCodecID id )
+nvpipe* nvpipe_create_instance( enum NVPipeCodecID id)
 {
     nvpipe* codec;
     switch(id) {
-        
     case NVPIPE_CODEC_ID_NULL:
         codec = (nvpipe*) calloc( sizeof(nvpipe), 1 );
         codec->type_ = id;
         codec->codec_ptr_ = NULL;
         break;
 
-    case NVPIPE_CODEC_ID_H264:
+    case NVPIPE_CODEC_ID_H264_HARDWARE:
+        {
         codec = (nvpipe*) calloc( sizeof(nvpipe), 1 );
-        codec->type_ = NVPIPE_CODEC_ID_H264;
-        codec->codec_ptr_ = new NvPipeCodec264();
+        codec->type_ = NVPIPE_CODEC_ID_H264_HARDWARE;
+        NvPipeCodec264* ptr = new NvPipeCodec264();
+        ptr->setCodecImplementation(NV_CODEC);
+        codec->codec_ptr_ = ptr;
         break;
-
+        }
+    case NVPIPE_CODEC_ID_H264_SOFTWARE:
+        {
+        codec = (nvpipe*) calloc( sizeof(nvpipe), 1 );
+        codec->type_ = NVPIPE_CODEC_ID_H264_SOFTWARE;
+        NvPipeCodec264* ptr = new NvPipeCodec264();
+        ptr->setCodecImplementation(FFMPEG_LIBX);
+        codec->codec_ptr_ = ptr;
+        break;
+        }
     default:
         printf("Unrecognised format enumerator id: %d\n", id);
     }
@@ -60,7 +71,8 @@ void nvpipe_destroy_instance( nvpipe *codec )
         memset( codec, 0, sizeof(nvpipe) );
         free(codec);
         break;
-    case NVPIPE_CODEC_ID_H264:
+    case NVPIPE_CODEC_ID_H264_HARDWARE:
+    case NVPIPE_CODEC_ID_H264_SOFTWARE:
         delete (NvPipeCodec264*) codec->codec_ptr_;
         memset( codec, 0, sizeof(nvpipe) );
         free(codec);

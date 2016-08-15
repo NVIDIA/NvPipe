@@ -378,8 +378,8 @@
         return 0;
         */
         
-        nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
-        nvpipe* codec2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
+        nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
+        nvpipe* codec2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
         int width = 1920;
         int height = 1080;
 

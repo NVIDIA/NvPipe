@@ -25,10 +25,18 @@
 #include "libnvpipeutil/format.h"
 #include <cstdlib>
 
+enum NvPipeCodecImplementation {
+    FFMPEG_LIBX,
+    NV_CODEC
+};
+
 
 class NvPipeCodec {
 public:
     virtual void setImageSize(int width, int height);
+
+    virtual void setCodecImplementation(
+                    enum NvPipeCodecImplementation type);
 
     virtual void setInputFrameBuffer(   void* frame_buffer,
                                         size_t buffer_size);
@@ -73,6 +81,10 @@ protected:
     int gop_size_;
 
     int framerate_;
+    
+    enum NvPipeCodecImplementation codec_;
+
+    enum NvPipeCodecImplementation getCodec();
 
 private:
 

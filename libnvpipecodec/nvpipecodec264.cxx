@@ -24,9 +24,6 @@
 #include <cstdio>
 #include <limits>
 
-#define NVPIPE_H264_ENCODER_NAME "libx264"//"h264_nvenc"
-#define NVPIPE_H264_DECODER_NAME "h264"//"h264_cuvid"
-
 NvPipeCodec264::NvPipeCodec264() {
     //printf("nv_codec_h264 created\n");
 
@@ -142,9 +139,9 @@ int NvPipeCodec264::encode( void* buffer,
     // Check if encoder codec has been initialized
     if (encoder_codec_ == NULL) {
         encoder_codec_ = 
-            avcodec_find_encoder_by_name(NVPIPE_H264_ENCODER_NAME);
+            avcodec_find_encoder_by_name(getEncoderName().c_str());
         if (encoder_codec_ == NULL) {
-            printf("cannot find encoder: %s", NVPIPE_H264_ENCODER_NAME);
+            printf("cannot find encoder: %s", getEncoderName().c_str());
             return -1;
         }
 
@@ -313,9 +310,9 @@ int NvPipeCodec264::decode( void* output_picture,
     if (decoder_codec_ == NULL) {
 
         decoder_codec_ = 
-            avcodec_find_decoder_by_name(NVPIPE_H264_DECODER_NAME);
+            avcodec_find_decoder_by_name(getDecoderName().c_str());
         if (decoder_codec_ == NULL) {
-            printf("cannot find decoder: %s", NVPIPE_H264_DECODER_NAME);
+            printf("cannot find decoder: %s", getDecoderName().c_str());
             return -1;
         }
 
@@ -576,18 +573,52 @@ int NvPipeCodec264::configureEncoderContext() {
     encoder_context_->height = height_;
     encoder_context_->pix_fmt = encoder_frame_pixel_format_;
     // nvenc private setting
-    /*av_opt_set(encoder_context_->priv_data,
-                "preset", "llhq", 0);
-    av_opt_set(encoder_context_->priv_data,
-                "rc", "ll_2pass_quality", 0);
-    av_opt_set_int(encoder_context_->priv_data, "cbr", 1, 0);    
-    av_opt_set_int(encoder_context_->priv_data, "2pass", 1, 0);
-    av_opt_set_int(encoder_context_->priv_data, "delay", 0, 0);
-    */
-    av_opt_set(encoder_context_->priv_data, "tune", "zerolatency", 0);
+    switch(getCodec()) {
+    case NV_CODEC:
+        av_opt_set(encoder_context_->priv_data,
+                    "preset", "llhq", 0);
+        av_opt_set(encoder_context_->priv_data,
+                    "rc", "ll_2pass_quality", 0);
+        av_opt_set_int(encoder_context_->priv_data, "cbr", 1, 0);    
+        av_opt_set_int(encoder_context_->priv_data, "2pass", 1, 0);
+        av_opt_set_int(encoder_context_->priv_data, "delay", 0, 0);
+        break;
+    case FFMPEG_LIBX:
+        av_opt_set(encoder_context_->priv_data, 
+                    "tune", "zerolatency", 0);
+        break;
+    }
     if (avcodec_open2(encoder_context_, encoder_codec_, NULL) 
         != 0) {
         printf("cannot open codec\n");
         return -1;
+    }
+}
+
+std::string NvPipeCodec264::getEncoderName() {
+    switch(getCodec()) {
+    case FFMPEG_LIBX:
+        return "libx264";
+        break;
+    case NV_CODEC:
+        return "h264_nvenc";
+        break;
+    default:
+        printf("NvPipeCodec264::Initialize encoder went wrong\n");
+        break;
+    }
+}
+
+std::string NvPipeCodec264::getDecoderName() {
+    switch(getCodec()) {
+    case FFMPEG_LIBX:
+        return "h264";
+        break;
+    case NV_CODEC:
+        return "h264_cuvid";
+        break;
+    default:
+        printf("NvPipeCodec264::Initialize decoder went wrong\n");
+        break;
     }
 }

@@ -39,6 +39,8 @@ NvPipeCodec::NvPipeCodec() {
     framerate_ = 30;
 
     bitrate_overwrite_flag_ = false;
+
+    codec_ = NV_CODEC;
 }
 
 NvPipeCodec::~NvPipeCodec() {
@@ -76,3 +78,13 @@ void NvPipeCodec::setGopSize( int gop_size ) {
 void NvPipeCodec::setFramerate( int framerate ) {
     framerate_ = framerate;
 }
+
+enum NvPipeCodecImplementation NvPipeCodec::getCodec() {
+    return codec_;
+}
+
+void NvPipeCodec::setCodecImplementation(
+            enum NvPipeCodecImplementation type) {
+    codec_ = type;
+}
+

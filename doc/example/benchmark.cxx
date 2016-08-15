@@ -148,7 +148,7 @@ int main( int argc, char* argv[] ) {
     printf ("*************************\n");
     printf ("\n   experiment starts...\n");
 
-    nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264);
+    nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
 
     size_t buffer_size = sizeof(uint8_t) * 
                             width * height *
