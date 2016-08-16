@@ -26,6 +26,10 @@
 #include "libnvpipecodec/nvpipecodec264.h"
 #include "libnvpipeutil/formatConversionCuda.h"
 
+// AJ profiling
+#include <cuda_profiler_api.h>
+#include <nvToolsExt.h>
+
 nvpipe* nvpipe_create_instance( enum NVPipeCodecID id)
 {
     nvpipe* codec;
@@ -108,11 +112,15 @@ int nvpipe_encode(  nvpipe *codec,
     
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
-
+// AJ profiling
+cudaProfilerStart();
+nvtxRangePushA("encodingSession");
     codec_ptr->setImageSize(width, height);
     codec_ptr->setInputFrameBuffer(input_buffer, input_buffer_size);
     codec_ptr->encode(output_buffer, *output_buffer_size, format);
-
+// AJ profiling
+nvtxRangePop();
+cudaProfilerStop();
     return 0;
 
 }
@@ -130,7 +138,9 @@ int nvpipe_decode(  nvpipe *codec,
 
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
-
+// AJ profiling
+cudaProfilerStart();
+nvtxRangePushA("decodingSession");
     codec_ptr->setImageSize(*width, *height);
     codec_ptr->setInputPacketBuffer(input_buffer, input_buffer_size);
     codec_ptr->decode(  output_buffer,
@@ -138,7 +148,9 @@ int nvpipe_decode(  nvpipe *codec,
                         *height,
                         output_buffer_size,
                         format);
-
+// AJ profiling
+nvtxRangePop();
+cudaProfilerStop();
     return 0;
 }
 

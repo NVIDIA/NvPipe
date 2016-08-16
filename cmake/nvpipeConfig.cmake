@@ -1,8 +1,9 @@
 add_library(nvpipe STATIC IMPORTED)
 
-find_library(NVPIPE_LIBRARY_PATH nvpipe HINTS "/usr/local/lib/")
+find_library(NVPIPE_LIBRARY_PATH nvpipe HINTS "@CMAKE_INSTALL_PREFIX@/lib")
 
 set(NVPIPE_LIBRARIES nvpipe)
+set(NVPIPE_INCLUDE_DIRS "@CMAKE_INSTALL_PREFIX@/include")
 
 find_package(CUDA)
   set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${CUDA_LIBRARIES})
@@ -45,6 +46,10 @@ if (PKG_CONFIG_FOUND)
   endif(AVUTIL_FOUND)
 
 endif(PKG_CONFIG_FOUND)
+
+find_library(CUDA_NVTX_LIB libnvToolsExt.so HINTS "@CUDA_TOOLKIT_ROOT_DIR@" PATH_SUFFIXES lib lib64)
+
+set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${CUDA_NVTX_LIB})
 
 # some extra lib needed
 # target_link_libraries (${NVPIPE} "-lm -lX11 -lva -lva-drm -lva-x11 -lvdpau")

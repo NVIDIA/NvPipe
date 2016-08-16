@@ -24,6 +24,11 @@
 #include <cstdio>
 #include <limits>
 
+// AJ profiling
+#include <cuda_profiler_api.h>
+#include <nvToolsExt.h>
+
+
 NvPipeCodec264::NvPipeCodec264() {
     //printf("nv_codec_h264 created\n");
 
@@ -223,6 +228,9 @@ int NvPipeCodec264::encode( void* buffer,
         encoder_frame_buffer_corrupted_ = false;
     }
 
+// AJ profiling
+nvtxRangePushA("encodingFormatConversionSession");
+
     switch ( encoder_conversion_flag_ ) {
     case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
@@ -238,6 +246,12 @@ int NvPipeCodec264::encode( void* buffer,
     default:
         break;
     }
+
+// AJ profiling
+nvtxRangePop();
+
+// AJ profiling
+nvtxRangePushA("encodingFfmpegAPISession");
 
     av_init_packet(&encoder_packet_);
     encoder_packet_.data = NULL;
@@ -294,6 +308,10 @@ int NvPipeCodec264::encode( void* buffer,
     // output the packet size;
     output_buffer_size = encoder_packet_.size + 10;
     av_packet_unref(&encoder_packet_);
+
+// AJ profiling
+nvtxRangePop();
+
 
     return result;
 }
@@ -353,6 +371,9 @@ int NvPipeCodec264::decode( void* output_picture,
         decoder_config_corrupted_ = false;
     }
 
+// AJ profiling
+nvtxRangePushA("decodingFfmpegAPISession");
+
     av_init_packet(&decoder_packet_);
     decoder_packet_.data = (uint8_t *) packet_;
     decoder_packet_.size = packet_buffer_size_;
@@ -383,9 +404,15 @@ int NvPipeCodec264::decode( void* output_picture,
         }
     }
 
+// AJ profiling
+nvtxRangePop();
+
     size_t frameSize;
     width = decoder_frame_->width;
     height = decoder_frame_->height;
+
+// AJ profiling
+nvtxRangePushA("decodingFormatConversionSession");
 
     // should really check the decoder_frame_->format
     switch ( decoder_conversion_flag_ ) {
@@ -410,6 +437,9 @@ int NvPipeCodec264::decode( void* output_picture,
                                                 output_picture,
                                                 &memgpu2_);
         av_packet_unref(&decoder_packet_);
+// AJ profiling
+nvtxRangePop();
+
         return 0;
         break;
     case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB:
@@ -429,9 +459,11 @@ int NvPipeCodec264::decode( void* output_picture,
                                                 &memgpu2_);
         //formatConversionAVFrameRGB( decoder_frame_, output_picture);
         av_packet_unref(&decoder_packet_);
+// AJ profiling
+nvtxRangePop();
+
         return 0;
         break;
-
     default:
         frameSize = 0;
         for ( int i = 0; i < AV_NUM_DATA_POINTERS; i++ ) {

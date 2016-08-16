@@ -380,8 +380,8 @@
         
         nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
         nvpipe* codec2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
-        int width = 1920;
-        int height = 1080;
+        int width = 640;
+        int height = 480;
 
         size_t buffer_size = sizeof(uint8_t)*width*height*4;
         void* img_buffer = malloc(buffer_size);
@@ -395,13 +395,17 @@
         //ReadFromRGBFile("currentImage.pgm", img_buffer, width*height*3);
         //SaveBufferRGB(img_buffer, width, height, "currentImage_new.pgm");
         int channel = 4;
-        
+        nvpipeMemGpu2 memgpu2_;
+        initializeMemGpu2(&memgpu2_);
+
+for (int i = 0; i < 25; i++ ) {
+        pkt_buffer_size = buffer_size;
         for(size_t y=0;y<height;y++) {
             for(size_t x=0;x<width;x++) {
                 int index = y * width + x;
                 if ( channel == 4) {
-                    img_ptr0[index*channel] = x+y;//x+y;
-                    img_ptr0[index*channel+1] = x;//x;
+                    img_ptr0[index*channel] = x+y+i*5;//x+y;
+                    img_ptr0[index*channel+1] = x+i*10;//x;
                     img_ptr0[index*channel+2] = 0;
                     img_ptr0[index*channel+3] = 255;
                 } else {
@@ -411,25 +415,25 @@
                 }
             }
         }
-        nvpipeMemGpu2 memgpu2_;
-        initializeMemGpu2(&memgpu2_);
-
+/*
         SaveBufferRGBA(img_buffer, width, height, "original.pgm");
         formatConversionReuseMemory(width, height, img_buffer, pkt_buffer, NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12, &memgpu2_);
         SaveBufferNV12(pkt_buffer, width, height, "nv12.pgm");
         formatConversionReuseMemory(width, height, pkt_buffer, img_buffer, NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGBA, &memgpu2_);
         SaveBufferRGBA(img_buffer, width, height, "CONVERTED.pgm");
-
+*/
         nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGBA);
-        printf("encoding size: %zu\n", pkt_buffer_size);
-        SaveBufferBit(pkt_buffer, pkt_buffer_size, "file.264");
+        //printf("encoding size: %zu\n", pkt_buffer_size);
+        //SaveBufferBit(pkt_buffer, pkt_buffer_size, "file.264");
 
-        size_t ssss = 18931;
+        //size_t ssss = 18931;
         //ReadFromFile("file.264", pkt_buffer, ssss);
         //nvpipe_decode(codec2, pkt_buffer, ssss, img_buffer, img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGBA);
 
         nvpipe_decode(codec2, pkt_buffer, pkt_buffer_size, img_buffer, img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGBA);
-        SaveBufferRGBA(img_buffer, width, height, "decoded.pgm");
+//        SaveBufferRGBA(img_buffer, width, height, "decoded.pgm");
+}
+
 
         destroyMemGpu2(&memgpu2_);
         nvpipe_destroy_instance(codec);

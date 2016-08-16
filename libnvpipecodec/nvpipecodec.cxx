@@ -35,8 +35,9 @@ NvPipeCodec::NvPipeCodec() {
     packet_buffer_size_ = 0;
 
     bitrate_ = 1000000;
-    gop_size_ = std::numeric_limits<int>::max();
+    //gop_size_ = std::numeric_limits<int>::max();
     framerate_ = 30;
+    gop_size_ = 60;
 
     bitrate_overwrite_flag_ = false;
 
