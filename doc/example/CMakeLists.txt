@@ -48,3 +48,11 @@ cuda_add_executable(benchmark
 
 target_link_libraries(benchmark ${NVPIPE})
 target_link_libraries(benchmark "-lnvToolsExt")
+
+#add_executable(benchmark 
+cuda_add_executable(benchmark_v2
+                ${CMAKE_SOURCE_DIR}/doc/example/benchmarkRGBA.cxx
+                ${CMAKE_SOURCE_DIR}/doc/example/file_io.cxx)
+
+target_link_libraries(benchmark_v2 ${NVPIPE})
+target_link_libraries(benchmark_v2 "-lnvToolsExt")

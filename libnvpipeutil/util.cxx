@@ -26,6 +26,10 @@
 #include "libnvpipecodec/nvpipecodec264.h"
 #include "libnvpipeutil/formatConversionCuda.h"
 
+// AJ profiling
+#include <cuda_profiler_api.h>
+#include <nvToolsExt.h>
+
 nvpipe* nvpipe_create_instance( enum NVPipeCodecID id)
 {
     nvpipe* codec;
@@ -108,11 +112,15 @@ int nvpipe_encode(  nvpipe *codec,
     
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
-
+// AJ profiling
+cudaProfilerStart();
+nvtxRangePushA("encodingSession");
     codec_ptr->setImageSize(width, height);
     codec_ptr->setInputFrameBuffer(input_buffer, input_buffer_size);
     codec_ptr->encode(output_buffer, *output_buffer_size, format);
-
+// AJ profiling
+nvtxRangePop();
+cudaProfilerStop();
     return 0;
 
 }
@@ -130,7 +138,9 @@ int nvpipe_decode(  nvpipe *codec,
 
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
-
+// AJ profiling
+cudaProfilerStart();
+nvtxRangePushA("decodingSession");
     codec_ptr->setImageSize(*width, *height);
     codec_ptr->setInputPacketBuffer(input_buffer, input_buffer_size);
     codec_ptr->decode(  output_buffer,
@@ -138,7 +148,9 @@ int nvpipe_decode(  nvpipe *codec,
                         *height,
                         output_buffer_size,
                         format);
-
+// AJ profiling
+nvtxRangePop();
+cudaProfilerStop();
     return 0;
 }
 
@@ -521,6 +533,7 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame,
     // hacking starts here:
     case AV_PIX_FMT_YUV420P:
         {
+            /*
             printf("yuv420p\n");
             printf("size: %d\n", frame->linesize[0]);
             printf("size: %d\n", frame->linesize[1]);
@@ -530,6 +543,7 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame,
             printf("data: %p\n", frame->data[1]);
             printf("data: %p\n", frame->data[2]);
             printf("data: %p\n", frame->data[3]);
+            */
             unsigned int * d_YPtr;
             unsigned int * d_UPtr;
             unsigned int * d_VPtr;

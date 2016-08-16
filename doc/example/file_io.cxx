@@ -32,6 +32,37 @@ void SaveBufferRGB(uint8_t *data, int width, int height, const char *str) {
     fclose(pFile);
 }
 
+void SaveBufferRGBA(uint8_t *data, int width, int height, const char *str) {
+    FILE *pFile;
+
+    // Open file
+    pFile=fopen(str, "wb");
+    if(pFile==NULL)
+    return;
+
+    // Write header
+    fprintf(pFile, "P6\n%d %d\n255\n", width, height);
+
+    uint8_t *row = (uint8_t*)malloc( sizeof(uint8_t) * width * 3 );
+
+    // Write pixel data
+    for(int y=0; y<height; y++) {
+        for (int x=0; x<width; x++) {
+            int index = x + y*width;
+            row[x*3] = data[index*4];
+            row[x*3+1] = data[index*4+1];
+            row[x*3+2] = data[index*4+2];
+        }
+        fwrite(row, 1, width*3, pFile);
+    }
+
+    free (row);
+    // Close file
+    fclose(pFile);
+}
+
+
+
 void SaveBufferBit(uint8_t *data, size_t length, const char *str) {
     FILE *pFile;
     char szFilename[32];
@@ -155,6 +186,12 @@ void MemoryStack::writeBufferToFileList( std::string file_name,
                             width, height, 
                             str);
             break;
+        case RGBA_PICTURE:
+            sprintf(str, "%s%d.pgm", file_name.c_str(), i);
+            SaveBufferRGBA( stackItemVector_[i].ptr_, 
+                            width, height, 
+                            str);
+            break;
         case PLAIN_DATA:
             sprintf(str, "%s%d", file_name.c_str(), i);
             SaveBufferBit(  stackItemVector_[i].ptr_,
@@ -177,6 +214,7 @@ void MemoryStack::loadBufferFromFileList(
     std::string str_template = file_name;
     switch(buffer_type) {
     case PLAIN_DATA:
+    case RGBA_PICTURE:
         str_template = str_template + "%d";
         break;
     case RGB_PICTURE:
@@ -186,7 +224,7 @@ void MemoryStack::loadBufferFromFileList(
         str_template = str_template + "%d.pkt";
         break;
     }
-    
+
     //printf( "%s, %s\n", file_name.c_str(), str_template.c_str() );
 
     char str[50];

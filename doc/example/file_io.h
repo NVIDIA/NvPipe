@@ -11,6 +11,8 @@ void* pa_alloc(size_t sz);
 
 void SaveBufferRGB(uint8_t *data, int width, int height, const char *str);
 
+void SaveBufferRGBA(uint8_t *data, int width, int height, const char *str);
+
 void SaveBufferBit(uint8_t *data, size_t length, const char *str);
 
 size_t ReadFromFile(std::string file_name, void *data, size_t size);
@@ -23,6 +25,7 @@ typedef struct _memoryObj {
 enum Buffer_Type {
     PLAIN_DATA,
     RGB_PICTURE,
+    RGBA_PICTURE,
     PACKET_DATA
 };
 

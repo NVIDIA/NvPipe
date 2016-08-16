@@ -152,7 +152,7 @@ int main( int argc, char* argv[] ) {
 
     size_t buffer_size = sizeof(uint8_t) * 
                             width * height *
-                            frame_number * 3;
+                            frame_number * 4;
 
     uint8_t* img_buffer = (uint8_t*)pa_alloc(buffer_size);
 
@@ -161,7 +161,7 @@ int main( int argc, char* argv[] ) {
     MemoryStack img_stack(img_buffer, buffer_size);
     MemoryStack pkt_stack(pkt_buffer, buffer_size/8);
 
-    size_t image_size = width * height * 3 * sizeof(uint8_t);
+    size_t image_size = width * height * 4 * sizeof(uint8_t);
     uint8_t *ptr;
     size_t current_packet_size;
 
@@ -181,9 +181,9 @@ int main( int argc, char* argv[] ) {
                 for(size_t y=0;y<height;y++) {
                     for(size_t x=0;x<width;x++) {
                         int index = y * width + x;
-                        ptr[index*3] = (x + y + i*5);
-                        ptr[index*3+1] = 128 + y + i *3;
-                        ptr[index*3+2] = 64 + x;
+                        ptr[index*4] = (x + y + i*5);
+                        ptr[index*4+1] = 128 + y + i *3;
+                        ptr[index*4+2] = 64 + x;
                     }
                 }
                 img_stack.pushBuffer(image_size);
@@ -193,7 +193,7 @@ int main( int argc, char* argv[] ) {
         if ( output_file && save_image_flag ) {
             sprintf(file_name, "%s_encoded", output_file);
             img_stack.writeBufferToFileList(file_name,
-                                            RGB_PICTURE,
+                                            RGBA_PICTURE,
                                             width,
                                             height);
         }
@@ -228,7 +228,7 @@ int main( int argc, char* argv[] ) {
                             img_stack.getBufferHandle(index), image_size,
                             pkt_stack.getBufferHandle(), &current_packet_size,
                             width, height,
-                            NVPIPE_IMAGE_FORMAT_RGB);
+                            NVPIPE_IMAGE_FORMAT_RGBA);
             pkt_stack.pushBuffer(current_packet_size);
             //if ( flag )
                 //nvtxRangePop();
@@ -290,7 +290,7 @@ int main( int argc, char* argv[] ) {
                             pkt_stack.getBufferHandle(i), current_packet_size,
                             img_stack.getBufferHandle(index), image_size,
                             &decode_width, &decode_height,
-                            NVPIPE_IMAGE_FORMAT_RGB);
+                            NVPIPE_IMAGE_FORMAT_RGBA);
             //if ( flag )
                 //nvtxRangePop();
             //else
@@ -304,7 +304,7 @@ int main( int argc, char* argv[] ) {
         if ( output_file && save_image_flag ) {
             sprintf(file_name, "%s_decoded", output_file);
             img_stack.writeBufferToFileList(file_name,
-                                            RGB_PICTURE,
+                                            RGBA_PICTURE,
                                             decode_width,
                                             decode_height);
         }
