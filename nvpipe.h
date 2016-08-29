@@ -22,12 +22,11 @@
  */
 #pragma once
 
-#include <stdlib.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include <stdlib.h>
 
 enum NVPipeCodecID {
     NVPIPE_CODEC_ID_NULL,

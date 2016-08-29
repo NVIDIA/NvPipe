@@ -145,7 +145,8 @@ void SaveBufferBit(uint8_t *data, int length, char *str) {
 
   // Open file
   sprintf(szFilename, str);
-  pFile=fopen(szFilename, "wb");
+  //pFile=fopen(szFilename, "wb");
+  pFile=fopen(szFilename, "ab");
   if(pFile==NULL)
     return;
 
@@ -383,8 +384,11 @@ int main( int argc, char* argv[] ) {
     nvpipe* codec2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
     //int width = 640;
     //int height = 480;
-    int width = 1920;
-    int height = 1080;
+    //int width = 1000;
+    //int height = 500;
+    //int width = 1024;
+    int width = 1000;
+    int height = 500;
 
     size_t buffer_size = sizeof(uint8_t)*width*height*4;
     void* img_buffer = malloc(buffer_size);
@@ -419,16 +423,21 @@ for (int i = 0; i < 10; i++ ) {
         }
     }
     printf("finished: %d\n", i);
-/*
+
     SaveBufferRGBA(img_buffer, width, height, "original.pgm");
     formatConversionReuseMemory(width, height, img_buffer, pkt_buffer, NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12, &memgpu2_);
+    
+    char filename_str[30];
+    sprintf(filename_str, "pic%d.nv12", i);
+    SaveBufferBit(pkt_buffer, width*height*1.5, filename_str);
+    SaveBufferBit(pkt_buffer, width*height*1.5, "pic.nv12");
     SaveBufferNV12(pkt_buffer, width, height, "nv12.pgm");
     formatConversionReuseMemory(width, height, pkt_buffer, img_buffer, NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGBA, &memgpu2_);
     SaveBufferRGBA(img_buffer, width, height, "CONVERTED.pgm");
-*/
+
     nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGBA);
-    //printf("encoding size: %zu\n", pkt_buffer_size);
-    //SaveBufferBit(pkt_buffer, pkt_buffer_size, "file.264");
+    printf("encoding size: %zu\n", pkt_buffer_size);
+    SaveBufferBit(pkt_buffer, pkt_buffer_size, "file.264");
 
     //size_t ssss = 18931;
     //ReadFromFile("file.264", pkt_buffer, ssss);

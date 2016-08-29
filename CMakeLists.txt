@@ -50,6 +50,7 @@ cuda_add_library(${NVPIPE}
     ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec264.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipeutil/util.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipeutil/kernels.cu
+    SHARED
 )
 
 # using pkg-config to get ffmpeg
