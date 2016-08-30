@@ -30,17 +30,17 @@ link_directories($ENV{CUDA_LIBRARY_PATH})
 target_link_libraries(test_app ${NVPIPE})
 
 #add_executable(benchmark 
-cuda_add_executable(benchmark 
-                ${CMAKE_SOURCE_DIR}/doc/example/benchmark.cxx
-                ${CMAKE_SOURCE_DIR}/doc/example/file_io.cxx)
+#cuda_add_executable(benchmark 
+#                ${CMAKE_SOURCE_DIR}/doc/example/benchmark.cxx
+#                ${CMAKE_SOURCE_DIR}/doc/example/file_io.cxx)
 
-target_link_libraries(benchmark ${NVPIPE})
-target_link_libraries(benchmark "-lnvToolsExt")
+#target_link_libraries(benchmark ${NVPIPE})
+#target_link_libraries(benchmark "-lnvToolsExt")
 
 #add_executable(benchmark 
-cuda_add_executable(benchmark_v2
-                ${CMAKE_SOURCE_DIR}/doc/example/benchmarkRGBA.cxx
-                ${CMAKE_SOURCE_DIR}/doc/example/file_io.cxx)
+#cuda_add_executable(benchmark_v2
+#                ${CMAKE_SOURCE_DIR}/doc/example/benchmarkRGBA.cxx
+#                ${CMAKE_SOURCE_DIR}/doc/example/file_io.cxx)
 
-target_link_libraries(benchmark_v2 ${NVPIPE})
-target_link_libraries(benchmark_v2 "-lnvToolsExt")
+#target_link_libraries(benchmark_v2 ${NVPIPE})
+#target_link_libraries(benchmark_v2 "-lnvToolsExt")

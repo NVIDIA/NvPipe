@@ -28,6 +28,14 @@ extern "C"
 #include "libnvpipeutil/formatConversionCuda.h"
 #include <string>
 
+/*! \brief H.264 Encoder/Decoder
+ *
+ *  Implementation using ffmpeg libx264 and nvenc/cuvid
+ *
+ *  Encoder takes image as input and generates packets as output. While
+ *  Decoder works the opposite.
+ *
+ */
 class NvPipeCodec264 : public NvPipeCodec {
 
 public:

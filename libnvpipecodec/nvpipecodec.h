@@ -14,12 +14,22 @@
 #include "libnvpipeutil/format.h"
 #include <cstdlib>
 
+
+/*! \brief enum for codec implementation
+ * 
+ * FFMPEG_LIBX is utilizing the libx264 through ffmpeg
+ * NV_CODEC is utilizing nvenc/cuvid through ffmpeg
+ */
 enum NvPipeCodecImplementation {
     FFMPEG_LIBX,
     NV_CODEC
 };
 
-
+/*! \brief Abstract Encoder/Decoder
+ *
+ *  Abstract NvPipe codec. Defines common interface to codecs.
+ *
+ */
 class NvPipeCodec {
 public:
     virtual void setImageSize(int width, int height);
