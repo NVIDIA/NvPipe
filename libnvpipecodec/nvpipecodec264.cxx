@@ -1,24 +1,13 @@
 /*
  * Copyright (c) 2016 NVIDIA Corporation.  All rights reserved.
  *
- * NVIDIA Corporation and its licensors retain all intellectual
+ * NVIDIA CORPORATION and its licensors retain all intellectual
  * property and proprietary rights in and to this software,
  * related documentation and any modifications thereto.  Any use,
  * reproduction, disclosure or distribution of this software and
  * related documentation without an express license agreement from
- * NVIDIA Corporation is strictly prohibited.
+ * NVIDIA CORPORATION is strictly prohibited.
  *
- * TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SOFTWARE
- * IS PROVIDED *AS IS* AND NVIDIA AND ITS SUPPLIERS DISCLAIM ALL
- * WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED
- * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- * PARTICULAR PURPOSE.  IN NO EVENT SHALL NVIDIA OR ITS SUPPLIERS BE
- * LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
- * LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
- * INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF
- * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGES
  */
 #include "libnvpipecodec/nvpipecodec264.h"
 #include <cstdio>
@@ -297,12 +286,15 @@ nvtxRangePushA("encodingFfmpegAPISession");
         }
     }
 
-    if ( encoder_packet_.size < output_buffer_size - 10 ) {
+    unsigned int packet_size = encoder_packet_.size > 0 ?
+                                encoder_packet_.size+10 : 10;
+    if ( packet_size < output_buffer_size ) {
         memcpy(buffer, encoder_packet_.data, encoder_packet_.size);
         appendDummyNAL(buffer, encoder_packet_.size);
-        result = -1;
+        result = 1;
     } else {
         printf("packet size larger than  buffer_size went wrong!\n");
+        result = -1;
     }
 
     // output the packet size;
@@ -482,12 +474,12 @@ nvtxRangePop();
         output_size = frameSize;
 
         size_t frameSize = 0;
-        size_t buffer_offset = 0;
+        char * output_buffer_ptr = (char *) output_picture;
         for ( int i = 0; i < AV_NUM_DATA_POINTERS; i++ ) {
             if ( decoder_frame_->linesize[i] > 0 ) {
                 frameSize = decoder_frame_->height*decoder_frame_->linesize[i];
-                memcpy(output_picture + buffer_offset, decoder_frame_->data[i], frameSize);
-                buffer_offset += frameSize;
+                memcpy(output_buffer_ptr, decoder_frame_->data[i], frameSize);
+                output_buffer_ptr += frameSize;
                 //printf ("iteration: %d  data: %d; linesize: %d, width: %d, height %d\n", i, decoder_frame_->data[i], decoder_frame_->linesize[i], decoder_frame_->width, decoder_frame_->height);
             }
         }
@@ -554,14 +546,18 @@ int NvPipeCodec264::getFormatConversionEnum(
         pixel_format = AV_PIX_FMT_YUV444P;
         conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
         break;
-
-    default:
-        printf("unrecognized pixel format, set to NV12 as default");
     case NVPIPE_IMAGE_FORMAT_NV12:
         pixel_format = AV_PIX_FMT_NV12;
         conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
         break;
+    default:
+        printf("unrecognized pixel format, set to NV12 as default");
+        pixel_format = AV_PIX_FMT_NV12;
+        conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
+        return -1;
+        break;
     }
+    return 0;
 }
 
 void NvPipeCodec264::appendDummyNAL(void* buffer, size_t offset) {
@@ -625,6 +621,8 @@ int NvPipeCodec264::configureEncoderContext() {
         printf("cannot open codec\n");
         return -1;
     }
+
+    return 0;
 }
 
 std::string NvPipeCodec264::getEncoderName() {
@@ -639,6 +637,7 @@ std::string NvPipeCodec264::getEncoderName() {
         printf("NvPipeCodec264::Initialize encoder went wrong\n");
         break;
     }
+    return "";
 }
 
 std::string NvPipeCodec264::getDecoderName() {
@@ -653,4 +652,5 @@ std::string NvPipeCodec264::getDecoderName() {
         printf("NvPipeCodec264::Initialize decoder went wrong\n");
         break;
     }
+    return "";
 }

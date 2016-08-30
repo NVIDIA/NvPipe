@@ -1,26 +1,14 @@
 /*
  * Copyright (c) 2016 NVIDIA Corporation.  All rights reserved.
  *
- * NVIDIA Corporation and its licensors retain all intellectual
+ * NVIDIA CORPORATION and its licensors retain all intellectual
  * property and proprietary rights in and to this software,
  * related documentation and any modifications thereto.  Any use,
  * reproduction, disclosure or distribution of this software and
  * related documentation without an express license agreement from
- * NVIDIA Corporation is strictly prohibited.
+ * NVIDIA CORPORATION is strictly prohibited.
  *
- * TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SOFTWARE
- * IS PROVIDED *AS IS* AND NVIDIA AND ITS SUPPLIERS DISCLAIM ALL
- * WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED
- * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- * PARTICULAR PURPOSE.  IN NO EVENT SHALL NVIDIA OR ITS SUPPLIERS BE
- * LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
- * LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
- * INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF
- * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGES
  */
-
 #include "nvpipe.h"
 #include "libnvpipecodec/nvpipecodec.h"
 #include "libnvpipecodec/nvpipecodec264.h"
@@ -95,8 +83,9 @@ int nvpipe_set_bitrate(nvpipe *codec, int64_t bitrate) {
 
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
-
     codec_ptr->setBitrate(bitrate);
+
+    return 0;
 }
 
 int nvpipe_encode(  nvpipe *codec, 
@@ -109,18 +98,34 @@ int nvpipe_encode(  nvpipe *codec,
                     enum NVPipeImageFormat format) {
     if (codec == NULL)
         return -1;
-    
+
+    // AJ temporary hacking
+    if ( !(width == 1024 && height == 768)  &&
+         !(width == 1280 && height == 720)  &&
+         !(width == 1920 && height == 1080) &&
+         !(width == 4096 && height == 2160)
+        ) {
+        printf("NvPipe::nvpipe_encode() resolution: %dx%d is not supported\n",
+                width, height);
+        *output_buffer_size = 0;
+        return -1;
+    }
+
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
-// AJ profiling
-cudaProfilerStart();
-nvtxRangePushA("encodingSession");
+
+    // AJ profiling
+    cudaProfilerStart();
+    nvtxRangePushA("encodingSession");
+
     codec_ptr->setImageSize(width, height);
     codec_ptr->setInputFrameBuffer(input_buffer, input_buffer_size);
     codec_ptr->encode(output_buffer, *output_buffer_size, format);
-// AJ profiling
-nvtxRangePop();
-cudaProfilerStop();
+
+    // AJ profiling
+    nvtxRangePop();
+    cudaProfilerStop();
+
     return 0;
 
 }
@@ -136,11 +141,29 @@ int nvpipe_decode(  nvpipe *codec,
     if (codec == NULL)
         return -1;
 
+    if ( input_buffer_size == 0 ) {
+        printf("NvPipe::nvpipe_decode() empty input_buffer\n");
+        return -1;
+    }
+
+    // AJ temporary hacking
+    if ( !(*width == 1024 && *height == 768)  &&
+         !(*width == 1280 && *height == 720)  &&
+         !(*width == 1920 && *height == 1080) &&
+         !(*width == 4096 && *height == 2160)
+        ) {
+        printf("NvPipe::nvpipe_decode() resolution: %dx%d is not supported\n",
+                *width, *height);
+        return -1;
+    }
+
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
-// AJ profiling
-cudaProfilerStart();
-nvtxRangePushA("decodingSession");
+
+    // AJ profiling
+    cudaProfilerStart();
+    nvtxRangePushA("decodingSession");
+
     codec_ptr->setImageSize(*width, *height);
     codec_ptr->setInputPacketBuffer(input_buffer, input_buffer_size);
     codec_ptr->decode(  output_buffer,
@@ -148,9 +171,10 @@ nvtxRangePushA("decodingSession");
                         *height,
                         output_buffer_size,
                         format);
-// AJ profiling
-nvtxRangePop();
-cudaProfilerStop();
+    // AJ profiling
+    nvtxRangePop();
+    cudaProfilerStop();
+
     return 0;
 }
 

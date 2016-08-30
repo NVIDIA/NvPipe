@@ -1,24 +1,13 @@
 /*
  * Copyright (c) 2016 NVIDIA Corporation.  All rights reserved.
  *
- * NVIDIA Corporation and its licensors retain all intellectual
+ * NVIDIA CORPORATION and its licensors retain all intellectual
  * property and proprietary rights in and to this software,
  * related documentation and any modifications thereto.  Any use,
  * reproduction, disclosure or distribution of this software and
  * related documentation without an express license agreement from
- * NVIDIA Corporation is strictly prohibited.
+ * NVIDIA CORPORATION is strictly prohibited.
  *
- * TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THIS SOFTWARE
- * IS PROVIDED *AS IS* AND NVIDIA AND ITS SUPPLIERS DISCLAIM ALL
- * WARRANTIES, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED
- * TO, IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
- * PARTICULAR PURPOSE.  IN NO EVENT SHALL NVIDIA OR ITS SUPPLIERS BE
- * LIABLE FOR ANY SPECIAL, INCIDENTAL, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR
- * LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS
- * INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF
- * OR INABILITY TO USE THIS SOFTWARE, EVEN IF NVIDIA HAS BEEN ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGES
  */
 #pragma once
 
@@ -28,12 +17,25 @@ extern "C" {
 
 #include <stdlib.h>
 
+/************************************************************
+ *     API enums
+ *
+ ************************************************************/
+
+/*! \brief NvPipe codec enumerator
+ *
+ * Determines which codec to use for encoding/decoding session
+ */
 enum NVPipeCodecID {
     NVPIPE_CODEC_ID_NULL,
     NVPIPE_CODEC_ID_H264_HARDWARE,
     NVPIPE_CODEC_ID_H264_SOFTWARE
 };
 
+/*! \brief NvPipe image format enumerator
+ *
+ * Specify input/output image format.
+ */
 enum NVPipeImageFormat {
     NVPIPE_IMAGE_FORMAT_NULL,
     NVPIPE_IMAGE_FORMAT_RGB,
@@ -44,6 +46,18 @@ enum NVPipeImageFormat {
     NVPIPE_IMAGE_FORMAT_NV12
 };
 
+/************************************************************
+ *     API struct
+ *
+ ************************************************************/
+
+/*! \brief NvPipe struct
+ *
+ *  before use:
+ *      created through nvpipe_create_instance(enum NVPipeCodecID);
+ *  after use:
+ *      destroy through nvpipe_destroy_instance(nvpipe *codec);
+ */
 typedef struct _nvpipe {
     enum NVPipeCodecID type_;
     void *codec_ptr_;
@@ -54,19 +68,22 @@ typedef struct _nvpipe {
  *
  ************************************************************/
 
-/*  create nvpipe instance
+/*! \brief create nvpipe instance
+ *
  *      return a handle to the instance;
  *      used to initiate nvpipe_encode/nvpipe_decode API call
  */
 nvpipe* nvpipe_create_instance( enum NVPipeCodecID id );
 
-/*  free nvpipe instance
+/*! \brief free nvpipe instance
+ *
  *      clean up each instance created by nvpipe_create_instance();
  */
-
 void nvpipe_destroy_instance( nvpipe *codec );
 
-/*  encode picture(frame) to video(packet) 
+/*! \brief encode/compress images
+ *
+ *  encode picture(frame) to video(packet) 
  *      User should provide pointer to both input and output buffer
  * 
  *      return 0 if success, otherwise, return < 0;
@@ -96,7 +113,9 @@ int nvpipe_encode(
                     enum NVPipeImageFormat format
                     );
 
-/*  decode video(packet) to picture(frame)
+/*! \brief decode/decompress packets
+ *
+ *  decode video(packet) to picture(frame)
  *      User should provide pointer to both input and output buffer
  * 
  *      return 0 if success, otherwise, return < 0;
@@ -124,11 +143,12 @@ int nvpipe_decode(
                     enum NVPipeImageFormat format
                     );
 
-/*  set bitrate used for encoder
- *      bitrate = 0 to enable automatic adjust bitrate
- *          [image width] x [image height] x [framerate] x 0.07
+/*! \brief set average bitrate for nvpipe
  *
- *  guideline for bitrate adjustment:
+ *  set bitrate used for encoder
+ *      bitrate = 0 to use default bitrate
+ *
+ *  guideline for bitrate adjustment (default motion rank = 4):
  *  [image width] x [image height] x [framerate] x [motion rank] x 0.07
  *      [motion rank]:  1 being low motion;
  *                      2 being medium motion;
