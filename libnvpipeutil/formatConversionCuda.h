@@ -25,47 +25,64 @@ extern "C" {
  ************************************************************/
 
 typedef cudaError (*conversionFunctionPtr) (
-    int, int, CUdeviceptr, CUdeviceptr);
+    int, int, int, CUdeviceptr, CUdeviceptr);
 
-cudaError launch_CudaARGB2NV12Process(  int w, int h, 
-                                        CUdeviceptr pARGBImage, 
-                                        CUdeviceptr pNV12Image);
-
-cudaError launch_CudaNV12TOARGBProcess( int w, int h, 
-                                        CUdeviceptr pNV12Image, 
-                                        CUdeviceptr pARGBImage);
-
-cudaError launch_CudaRGBA2NV12Process(  int w, int h, 
-                                        CUdeviceptr pARGBImage, 
-                                        CUdeviceptr pNV12Image);
-
-cudaError launch_CudaNV12TORGBAProcess( int w, int h, 
-                                        CUdeviceptr pNV12Image, 
-                                        CUdeviceptr pARGBImage);
-
-cudaError launch_CudaRGB2NV12Process(   int w, int h, 
+cudaError launch_CudaRGB2NV12Process(   int w, int h, int align,
                                         CUdeviceptr pRGBImage, 
                                         CUdeviceptr pNV12Image);
 
-cudaError launch_CudaNV12TORGBProcess(  int w, int h, 
-                                        CUdeviceptr pNV12Image, 
-                                        CUdeviceptr pRGBImage);
-
-cudaError launch_CudaNV12TORGBProcessDualChannel( int w, int h,
+cudaError launch_CudaNV12TORGBProcessDualChannel( int w, int h, int align,
                                         CUdeviceptr pYPlane,
                                         CUdeviceptr pUVPlane,
                                         CUdeviceptr pRGBImage);
 
-cudaError launch_CudaNV12TORGBAProcessDualChannel( int w, int h,
+cudaError launch_CudaRGBA2NV12Process(  int w, int h, int align,
+                                        CUdeviceptr pARGBImage, 
+                                        CUdeviceptr pNV12Image);
+
+cudaError launch_CudaNV12TORGBAProcessDualChannel( int w, int h, int align,
                                         CUdeviceptr pYPlane,
                                         CUdeviceptr pUVPlane,
                                         CUdeviceptr pRGBAImage);
 
-cudaError launch_CudaYUV420PTORGBAProcessTriChannel( int w, int h,
+cudaError launch_CudaYUV420PTORGBAProcessTriChannel( int w, int h, int align,
                                         CUdeviceptr pYPlane,
                                         CUdeviceptr pUPlane,
                                         CUdeviceptr pVPlane,
                                         CUdeviceptr pRGBAImage);
+
+/**********************************************/
+
+
+
+
+
+cudaError launch_CudaARGB2NV12Process(  int w, int h, int align,
+                                        CUdeviceptr pARGBImage, 
+                                        CUdeviceptr pNV12Image);
+
+
+
+
+cudaError launch_CudaNV12TORGBProcess(  int w, int h, int align,
+                                        CUdeviceptr pNV12Image, 
+                                        CUdeviceptr pRGBImage);
+
+
+
+cudaError launch_CudaNV12TOARGBProcess( int w, int h, int align,
+                                        CUdeviceptr pNV12Image, 
+                                        CUdeviceptr pARGBImage);
+
+
+cudaError launch_CudaNV12TORGBAProcess( int w, int h, int align,
+                                        CUdeviceptr pNV12Image, 
+                                        CUdeviceptr pARGBImage);
+
+
+
+
+
 
 #ifdef __cplusplus
 }

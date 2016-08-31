@@ -55,37 +55,17 @@ void allocateMemGpu2(   nvpipeMemGpu2 *mem_gpu,
 /// free allocated GPU memory.
 void destroyMemGpu2(nvpipeMemGpu2 *mem_gpu);
 
-/*! \brief format conversion
- *
- * expecting input and output buffer on the host memory from user.
- * conversion done through cuda.
- * allocate and free GPU memory for every conversion.
- */
-int formatConversion( int w, int h,
-                        void* imagePtrSrc,
-                        void* imagePtrDes,
-                        enum NVPipeImageFormatConversion);
-
 /*! \brief format conversion with reusing GPU memory
  *
  * expecting input and output buffer on the host memory from user.
  * conversion done through cuda.
  * use reusable GPU memory struct mem_gpu2.
  */
-int formatConversionReuseMemory( int w, int h,
+int formatConversionReuseMemory( int w, int h, int align,
                         void* imagePtrSrc,
                         void* imagePtrDes,
                         enum NVPipeImageFormatConversion,
                         nvpipeMemGpu2 *mem_gpu2);
-
-/*! \brief Convert AVframe (ffmpeg) frame to RGB buffer
- *
- * expecting frame and buffer pointing to host memory.
- * conversion done through cuda.
- * allocate and free GPU memory for every conversion.
- */
-int formatConversionAVFrameRGB( AVFrame *frame,
-                                void *buffer);
 
 /*! \brief Convert AVframe (ffmpeg) frame to RGB buffer with reusing GPU memory
  *
@@ -93,18 +73,9 @@ int formatConversionAVFrameRGB( AVFrame *frame,
  * conversion done through cuda.
  * use reusable GPU memory struct mem_gpu2.
  */
-int formatConversionAVFrameRGBReuseMemory( AVFrame *frame,
+int formatConversionAVFrameRGBReuseMemory( AVFrame *frame, int align,
                                 void *buffer,
                                 nvpipeMemGpu2 *mem_gpu2);
-
-/*! \brief Convert AVframe (ffmpeg) frame to RGBA buffer
- *
- * expecting frame and buffer pointing to host memory.
- * conversion done through cuda.
- * allocate and free GPU memory for every conversion.
- */
-int formatConversionAVFrameRGBA( AVFrame *frame,
-                                 void *buffer);
 
 /*! \brief Convert AVframe (ffmpeg) frame to RGBA buffer with reusing GPU memory
  *
@@ -112,7 +83,7 @@ int formatConversionAVFrameRGBA( AVFrame *frame,
  * conversion done through cuda.
  * use reusable GPU memory struct mem_gpu2.
  */
-int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame,
+int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
                                 void *buffer,
                                 nvpipeMemGpu2 *mem_gpu2);
 

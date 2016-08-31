@@ -12,10 +12,29 @@
 #include "libnvpipecodec/nvpipecodec264.h"
 #include <cstdio>
 #include <limits>
+#include <cmath>
 
 // AJ profiling
 #include <cuda_profiler_api.h>
 #include <nvToolsExt.h>
+
+#define AVFRAME_LINESIZE_ALIGNMENT 32
+
+///////// AJ debugging
+void SaveBufferBit(uint8_t *data, int length, char *str) {
+  FILE *pFile;
+
+  // Open file
+  pFile=fopen(str, "ab");
+  if(pFile==NULL)
+    return;
+
+  fwrite(data, 1, length, pFile);
+  
+  // Close file
+  fclose(pFile);
+}
+///////// AJ end
 
 
 NvPipeCodec264::NvPipeCodec264() {
@@ -153,7 +172,6 @@ int NvPipeCodec264::encode( void* buffer,
         encoder_frame_buffer_corrupted_ = true;
     }
 
-
     // Check if encoder frame parameter has been updated
     if (encoder_config_corrupted_) {
         printf("encoder reconfiguring...\n");
@@ -171,12 +189,18 @@ int NvPipeCodec264::encode( void* buffer,
     if (encoder_frame_buffer_corrupted_) {
         printf("update encoder frame buffer\n");
         const uint8_t* frame_image_ptr;
-        size_t num_pixels = width_;
-        num_pixels *= height_;
+        //size_t num_pixels = width_;
+        //num_pixels *= height_;
 
         encoder_frame_->format = encoder_frame_pixel_format_;
         encoder_frame_->width = width_;
         encoder_frame_->height = height_;
+
+        float linesize = width_;
+        linesize = std::ceil( linesize / AVFRAME_LINESIZE_ALIGNMENT )
+                    * AVFRAME_LINESIZE_ALIGNMENT;
+        size_t num_pixels = linesize;
+        num_pixels *= height_;
 
         switch ( encoder_conversion_flag_ ) {
             case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
@@ -202,15 +226,22 @@ int NvPipeCodec264::encode( void* buffer,
                 break;
         }
 
+        ///////// AJ debugging
+        printf ("format: %d\n", encoder_frame_pixel_format_);
+        printf ("size width_: %d, height_: %d", width_, height_);
+        printf ("buffer: %p; size: %zu", encoder_converted_image_buffer_, 
+                                         encoder_converted_image_buffer_size_);
+        ///////// AJ end
+
         // setup input data buffer to encoder_frame_
         // Note the allocation of data buffer is done by user
         if ( av_image_fill_arrays ( encoder_frame_->data, 
                                     encoder_frame_->linesize,
-                                    frame_image_ptr, 
+                                    frame_image_ptr,
                                     encoder_frame_pixel_format_,
                                     width_,
                                     height_,
-                                    64 ) < 0 ) {
+                                    AVFRAME_LINESIZE_ALIGNMENT ) < 0 ) {
             printf("could not associate image buffer to frame");
             return -1;
         }
@@ -224,10 +255,8 @@ nvtxRangePushA("encodingFormatConversionSession");
     case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12:
-        //formatConversion(width_, height_, 
-        //                frame_, encoder_converted_image_buffer_,
-        //                encoder_conversion_flag_);
-        formatConversionReuseMemory(width_, height_, frame_,
+        formatConversionReuseMemory(width_, height_, AVFRAME_LINESIZE_ALIGNMENT,
+                                    frame_,
                                     encoder_converted_image_buffer_,
                                     encoder_conversion_flag_,
                                     &memgpu2_);
@@ -235,6 +264,19 @@ nvtxRangePushA("encodingFormatConversionSession");
     default:
         break;
     }
+    
+    ///////// AJ debugging
+    static int debug_index = 0;
+    if (debug_index == 0) {
+        printf("address: %p, %p\n", encoder_converted_image_buffer_, encoder_frame_->data[0]);
+        printf("address1: %p, %d\n", encoder_frame_->data[0], encoder_frame_->linesize[0]);
+        printf("address2: %p, %d\n", encoder_frame_->data[1], encoder_frame_->linesize[1]);
+        printf("address3: %p, %d\n", encoder_frame_->data[2], encoder_frame_->linesize[2]);
+        printf("size: %d, %d\n", encoder_frame_->width, encoder_frame_->height);
+        SaveBufferBit(encoder_frame_->data[0], width_*height_*3/2, "to_be_encode.yuv");
+        debug_index++;
+    }
+    ///////// AJ end
 
 // AJ profiling
 nvtxRangePop();
@@ -396,6 +438,18 @@ nvtxRangePushA("decodingFfmpegAPISession");
         }
     }
 
+    ///////// AJ debugging
+    static int debug_index = 0;
+    if (debug_index == 0) {
+        printf("de address1: %p, %d\n", decoder_frame_->data[0], decoder_frame_->linesize[0]);
+        printf("de address2: %p, %d\n", decoder_frame_->data[1], decoder_frame_->linesize[1]);
+        printf("de address3: %p, %d\n", decoder_frame_->data[2], decoder_frame_->linesize[2]);
+        printf("de size: %d, %d\n", decoder_frame_->width, decoder_frame_->height);
+        //SaveBufferBit(encoder_frame_->data[0], width_*height_*3/2, "to_be_encode.yuv");
+        debug_index++;
+    }
+    ///////// AJ end
+
 // AJ profiling
 nvtxRangePop();
 
@@ -426,6 +480,7 @@ nvtxRangePushA("decodingFormatConversionSession");
         }
         output_size = frameSize;
         formatConversionAVFrameRGBAReuseMemory( decoder_frame_,
+                                                AVFRAME_LINESIZE_ALIGNMENT,
                                                 output_picture,
                                                 &memgpu2_);
         av_packet_unref(&decoder_packet_);
@@ -447,6 +502,7 @@ nvtxRangePop();
         }
         output_size = frameSize;
         formatConversionAVFrameRGBReuseMemory(  decoder_frame_,
+                                                AVFRAME_LINESIZE_ALIGNMENT,
                                                 output_picture,
                                                 &memgpu2_);
         //formatConversionAVFrameRGB( decoder_frame_, output_picture);
@@ -501,7 +557,7 @@ nvtxRangePop();
     //                decoder_frame_->data[0], 
     //                output_picture,
     //                decoder_conversion_flag_);
-    formatConversionReuseMemory(width, height, 
+    formatConversionReuseMemory(width, height, AVFRAME_LINESIZE_ALIGNMENT,
                                 decoder_frame_->data[0], 
                                 output_picture,
                                 decoder_conversion_flag_,
