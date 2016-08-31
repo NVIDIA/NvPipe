@@ -245,24 +245,6 @@ int formatConversionReuseMemory( int w, int h, int align,
         largeBufferSize = sourceSize;
         funcPtr = &launch_CudaRGBA2NV12Process;
         break;
-    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB:
-        sourceSize = sizeof(uint8_t)*w*h*3/2;
-        destinationSize = sizeof(uint8_t)*linesize*h*4;
-        smallBuffer = &d_sourcePtr;
-        smallBufferSize = sourceSize;
-        largeBuffer = &d_destinationPtr;
-        largeBufferSize = destinationSize;
-        funcPtr = &launch_CudaNV12TOARGBProcess;
-        break;
-    case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
-        sourceSize = sizeof(uint8_t)*w*h*4;
-        destinationSize = sizeof(uint8_t)*linesize*h*3/2;
-        smallBuffer = &d_destinationPtr;
-        smallBufferSize = destinationSize;
-        largeBuffer = &d_sourcePtr;
-        largeBufferSize = sourceSize;
-        funcPtr = &launch_CudaARGB2NV12Process;
-        break;
     default:
         return -1;
     }

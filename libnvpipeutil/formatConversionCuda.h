@@ -51,39 +51,17 @@ cudaError launch_CudaYUV420PTORGBAProcessTriChannel( int w, int h, int align,
                                         CUdeviceptr pVPlane,
                                         CUdeviceptr pRGBAImage);
 
-/**********************************************/
-
-
-
-
-
-cudaError launch_CudaARGB2NV12Process(  int w, int h, int align,
-                                        CUdeviceptr pARGBImage, 
-                                        CUdeviceptr pNV12Image);
-
-
-
-
+/************************************************************
+ *     NOT used any more
+ *
+ ************************************************************/
 cudaError launch_CudaNV12TORGBProcess(  int w, int h, int align,
                                         CUdeviceptr pNV12Image, 
                                         CUdeviceptr pRGBImage);
 
-
-
-cudaError launch_CudaNV12TOARGBProcess( int w, int h, int align,
-                                        CUdeviceptr pNV12Image, 
-                                        CUdeviceptr pARGBImage);
-
-
 cudaError launch_CudaNV12TORGBAProcess( int w, int h, int align,
                                         CUdeviceptr pNV12Image, 
                                         CUdeviceptr pARGBImage);
-
-
-
-
-
-
 #ifdef __cplusplus
 }
 #endif
