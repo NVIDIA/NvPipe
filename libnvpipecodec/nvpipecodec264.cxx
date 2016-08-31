@@ -20,25 +20,7 @@
 
 #define AVFRAME_LINESIZE_ALIGNMENT 32
 
-///////// AJ debugging
-void SaveBufferBit(uint8_t *data, int length, char *str) {
-  FILE *pFile;
-
-  // Open file
-  pFile=fopen(str, "ab");
-  if(pFile==NULL)
-    return;
-
-  fwrite(data, 1, length, pFile);
-  
-  // Close file
-  fclose(pFile);
-}
-///////// AJ end
-
-
 NvPipeCodec264::NvPipeCodec264() {
-    //printf("nv_codec_h264 created\n");
 
     encoder_context_ = NULL;
     encoder_codec_ = NULL;
@@ -69,7 +51,6 @@ NvPipeCodec264::NvPipeCodec264() {
 }
 
 NvPipeCodec264::~NvPipeCodec264() {
-    //printf("nv_codec_h264 destroyed\n");
 
     if (decoder_codec_ && decoder_context_) {
         avcodec_close(decoder_context_);
@@ -174,7 +155,6 @@ int NvPipeCodec264::encode( void* buffer,
 
     // Check if encoder frame parameter has been updated
     if (encoder_config_corrupted_) {
-        printf("encoder reconfiguring...\n");
         avcodec_close(encoder_context_);
         av_free(encoder_context_);
 
@@ -187,10 +167,7 @@ int NvPipeCodec264::encode( void* buffer,
     }
 
     if (encoder_frame_buffer_corrupted_) {
-        printf("update encoder frame buffer\n");
         const uint8_t* frame_image_ptr;
-        //size_t num_pixels = width_;
-        //num_pixels *= height_;
 
         encoder_frame_->format = encoder_frame_pixel_format_;
         encoder_frame_->width = width_;
@@ -203,13 +180,12 @@ int NvPipeCodec264::encode( void* buffer,
         num_pixels *= height_;
 
         switch ( encoder_conversion_flag_ ) {
-            case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
             case NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12:
             case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
                 if ( encoder_converted_image_buffer_size_ < 
                                                 num_pixels * 3 / 2 ) {
                     if ( encoder_converted_image_buffer_ ) {
-                        printf("free format conversion buffer in encoder");
+                        //printf("free format conversion buffer in encoder");
                         free( encoder_converted_image_buffer_ );
                     }
 
@@ -225,13 +201,6 @@ int NvPipeCodec264::encode( void* buffer,
                 frame_image_ptr = (const uint8_t*) frame_;
                 break;
         }
-
-        ///////// AJ debugging
-        printf ("format: %d\n", encoder_frame_pixel_format_);
-        printf ("size width_: %d, height_: %d", width_, height_);
-        printf ("buffer: %p; size: %zu", encoder_converted_image_buffer_, 
-                                         encoder_converted_image_buffer_size_);
-        ///////// AJ end
 
         // setup input data buffer to encoder_frame_
         // Note the allocation of data buffer is done by user
@@ -252,7 +221,6 @@ int NvPipeCodec264::encode( void* buffer,
 nvtxRangePushA("encodingFormatConversionSession");
 
     switch ( encoder_conversion_flag_ ) {
-    case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12:
         formatConversionReuseMemory(width_, height_, AVFRAME_LINESIZE_ALIGNMENT,
@@ -264,19 +232,6 @@ nvtxRangePushA("encodingFormatConversionSession");
     default:
         break;
     }
-    
-    ///////// AJ debugging
-    static int debug_index = 0;
-    if (debug_index == 0) {
-        printf("address: %p, %p\n", encoder_converted_image_buffer_, encoder_frame_->data[0]);
-        printf("address1: %p, %d\n", encoder_frame_->data[0], encoder_frame_->linesize[0]);
-        printf("address2: %p, %d\n", encoder_frame_->data[1], encoder_frame_->linesize[1]);
-        printf("address3: %p, %d\n", encoder_frame_->data[2], encoder_frame_->linesize[2]);
-        printf("size: %d, %d\n", encoder_frame_->width, encoder_frame_->height);
-        SaveBufferBit(encoder_frame_->data[0], width_*height_*3/2, "to_be_encode.yuv");
-        debug_index++;
-    }
-    ///////// AJ end
 
 // AJ profiling
 nvtxRangePop();
@@ -395,7 +350,6 @@ int NvPipeCodec264::decode( void* output_picture,
                             pixel_format);
 
     if ( decoder_config_corrupted_ ) {
-        printf("decoder reconfiguring...\n");
         avcodec_close(decoder_context_);
         if (avcodec_open2(decoder_context_, 
                             decoder_codec_, NULL) < 0) {
@@ -438,18 +392,6 @@ nvtxRangePushA("decodingFfmpegAPISession");
         }
     }
 
-    ///////// AJ debugging
-    static int debug_index = 0;
-    if (debug_index == 0) {
-        printf("de address1: %p, %d\n", decoder_frame_->data[0], decoder_frame_->linesize[0]);
-        printf("de address2: %p, %d\n", decoder_frame_->data[1], decoder_frame_->linesize[1]);
-        printf("de address3: %p, %d\n", decoder_frame_->data[2], decoder_frame_->linesize[2]);
-        printf("de size: %d, %d\n", decoder_frame_->width, decoder_frame_->height);
-        //SaveBufferBit(encoder_frame_->data[0], width_*height_*3/2, "to_be_encode.yuv");
-        debug_index++;
-    }
-    ///////// AJ end
-
 // AJ profiling
 nvtxRangePop();
 
@@ -462,11 +404,6 @@ nvtxRangePushA("decodingFormatConversionSession");
 
     // should really check the decoder_frame_->format
     switch ( decoder_conversion_flag_ ) {
-    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB:
-        frameSize = width;
-        frameSize *= height;
-        frameSize *= 4;
-        break;
     case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGBA:
         frameSize = width;
         frameSize *= height;
@@ -544,27 +481,6 @@ nvtxRangePop();
         return 0;
     }
 
-    // not using this code any more
-    if (frameSize > output_size ) {
-        output_size = frameSize;
-        av_packet_unref(&decoder_packet_);
-        printf("frame size larger than frame_buffer_size_,\
-                something went wrong!\n");
-        return -1;
-    }
-
-    //formatConversion(width, height, 
-    //                decoder_frame_->data[0], 
-    //                output_picture,
-    //                decoder_conversion_flag_);
-    formatConversionReuseMemory(width, height, AVFRAME_LINESIZE_ALIGNMENT,
-                                decoder_frame_->data[0], 
-                                output_picture,
-                                decoder_conversion_flag_,
-                                &memgpu2_);
-                                
-    av_packet_unref(&decoder_packet_);
-    return 0;
 }
 
 int NvPipeCodec264::getFormatConversionEnum(
@@ -574,12 +490,6 @@ int NvPipeCodec264::getFormatConversionEnum(
             enum AVPixelFormat &pixel_format) 
 {
     switch( format ) {
-    case NVPIPE_IMAGE_FORMAT_ARGB:
-        pixel_format = AV_PIX_FMT_NV12;
-        conversion_flag = encoder_flag ?
-            NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12 :
-            NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB;
-        break;
     case NVPIPE_IMAGE_FORMAT_RGBA:
         pixel_format = AV_PIX_FMT_NV12;
         conversion_flag = encoder_flag ?
@@ -591,16 +501,6 @@ int NvPipeCodec264::getFormatConversionEnum(
         conversion_flag = encoder_flag ?
             NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12 :
             NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB;
-        break;
-
-    case NVPIPE_IMAGE_FORMAT_YUV420P:
-        pixel_format = AV_PIX_FMT_YUV420P;
-        conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
-        break;
-
-    case NVPIPE_IMAGE_FORMAT_YUV444P:
-        pixel_format = AV_PIX_FMT_YUV444P;
-        conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
         break;
     case NVPIPE_IMAGE_FORMAT_NV12:
         pixel_format = AV_PIX_FMT_NV12;

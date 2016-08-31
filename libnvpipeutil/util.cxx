@@ -245,31 +245,12 @@ int formatConversionReuseMemory( int w, int h, int align,
         largeBufferSize = sourceSize;
         funcPtr = &launch_CudaRGBA2NV12Process;
         break;
-    case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_ARGB:
-        sourceSize = sizeof(uint8_t)*w*h*3/2;
-        destinationSize = sizeof(uint8_t)*linesize*h*4;
-        smallBuffer = &d_sourcePtr;
-        smallBufferSize = sourceSize;
-        largeBuffer = &d_destinationPtr;
-        largeBufferSize = destinationSize;
-        funcPtr = &launch_CudaNV12TOARGBProcess;
-        break;
-    case NVPIPE_IMAGE_FORMAT_CONVERSION_ARGB_TO_NV12:
-        sourceSize = sizeof(uint8_t)*w*h*4;
-        destinationSize = sizeof(uint8_t)*linesize*h*3/2;
-        smallBuffer = &d_destinationPtr;
-        smallBufferSize = destinationSize;
-        largeBuffer = &d_sourcePtr;
-        largeBufferSize = sourceSize;
-        funcPtr = &launch_CudaARGB2NV12Process;
-        break;
     default:
         return -1;
     }
 
     if (largeBufferSize > mem_gpu2->d_buffer_1_size_ ||
         smallBufferSize > mem_gpu2->d_buffer_2_size_) {
-            printf("mem reallocate!\n");
             allocateMemGpu2(mem_gpu2, largeBufferSize, smallBufferSize);
     }
     (*smallBuffer) = mem_gpu2->d_buffer_2_;
@@ -309,7 +290,6 @@ int formatConversionAVFrameRGBReuseMemory( AVFrame *frame, int align,
 
             if (pixel_count*3 > mem_gpu2->d_buffer_1_size_ ||
                 pixel_count*3/2 > mem_gpu2->d_buffer_2_size_ ) {
-                printf("mem reallocate!\n");
                 allocateMemGpu2(mem_gpu2,
                                 pixel_count*3,
                                 aligned_pixel_count*3/2);
@@ -382,7 +362,6 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
 
             if (pixel_count*4 > mem_gpu2->d_buffer_1_size_ ||
                 pixel_count*3/2 > mem_gpu2->d_buffer_2_size_ ) {
-                printf("mem reallocate!\n");
                 allocateMemGpu2(mem_gpu2,
                                 pixel_count*4,
                                 aligned_pixel_count*3/2);
@@ -444,7 +423,6 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
 
             if (pixel_count*4 > mem_gpu2->d_buffer_1_size_ ||
                 pixel_count*3/2 > mem_gpu2->d_buffer_2_size_ ) {
-                printf("mem reallocate!\n");
                 allocateMemGpu2(mem_gpu2,
                                 pixel_count*4,
                                 aligned_pixel_count*3/2);

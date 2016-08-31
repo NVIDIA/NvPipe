@@ -89,14 +89,13 @@ void SaveBufferBit(uint8_t *data, int length, char *str) {
 
 int main( int argc, char* argv[] ) {
 
-    //nvpipe* codec_1 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
-    nvpipe* codec_1 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_SOFTWARE);
+    nvpipe* codec_1 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
+    //nvpipe* codec_1 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_SOFTWARE);
     nvpipe* codec_2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
 
-    int width = 1000;
-    int height = 500;
-    //int width = 1920;
-    //int height = 1080;
+    
+    int width = 1920;
+    int height = 1080;
 
     size_t buffer_size = sizeof(uint8_t)*width*height*4;
     void* img_buffer = malloc(buffer_size);
@@ -110,6 +109,10 @@ int main( int argc, char* argv[] ) {
     initializeMemGpu2(&memgpu2_);
 
     for (int i = 0; i < 10; i++ ) {
+        if ( i > 4 ) {
+            width = 1000;
+            height = 500;
+        }
         pkt_buffer_size = buffer_size;
         for(size_t y=0;y<height;y++) {
             for(size_t x=0;x<width;x++) {
@@ -136,10 +139,7 @@ int main( int argc, char* argv[] ) {
             //SaveBufferBit(pkt_buffer, width*height*3/2, "nv12.yuv");
         }
         if ( !nvpipe_encode(codec_1, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGBA) ) {
-            if ( i == 0 ) {
-                printf("encoding size: %zu\n", pkt_buffer_size);
-                SaveBufferBit(pkt_buffer, pkt_buffer_size, "file.264");
-            }
+            SaveBufferBit(pkt_buffer, pkt_buffer_size, "file.264");
             if ( !nvpipe_decode(codec_1, pkt_buffer, pkt_buffer_size, img_buffer, img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGBA) ) {
                 //if ( i == 0 ) {
                 sprintf(image_filename, "decoded_%d.pgm", i);

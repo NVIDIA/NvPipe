@@ -31,6 +31,7 @@ find_package(CUDA)
 
 include_directories(${CMAKE_SOURCE_DIR} ${CUDA_SDK_ROOT_DIR}/common/inc)
 link_directories("${CUDA_TOOLKIT_ROOT_DIR}/lib64")
+link_directories("${CMAKE_INSTALL_PREFIX}/lib64")
 
 cuda_add_library(${NVPIPE}
     ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec.cxx

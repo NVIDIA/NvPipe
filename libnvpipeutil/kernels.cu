@@ -35,17 +35,6 @@ __forceinline__  __device__ float ARGB2Y(uchar4  argb)
   return clamp((0.257 * argb.y) + (0.504 * argb.z) + (0.098 * argb.w) + 16,0,255);
 }
 
-__global__ static void CudaProcessARGB2Y(int w, int h, uchar4 * pARGBImage, unsigned char * pNV12ImageY)
-{
-  unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
-  unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
-  if(i<w && j<h)
-  {
-    uchar4 argb=pARGBImage[w*j+i];
-    pNV12ImageY[w*j+i]= ARGB2Y(argb);
-  }
-}
-
 __global__ static void CudaProcessRGBA2Y(int w, int h, int linesize, uchar4 * pRGBAImage, unsigned char * pNV12ImageY)
 {
   unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
@@ -97,39 +86,6 @@ __forceinline__  __device__ float RGB2U(uchar3  rgb)
 __forceinline__  __device__ float RGB2V(uchar3  rgb)
 {
   return clamp((0.439 * rgb.x) - (0.368 * rgb.y) - (0.0701 * rgb.z)+128.0,0,255);
-}
-
-
-__global__ static void CudaProcessARGB2UV(int w, int h, uchar4 * pARGBImage, unsigned char * pNV12ImageUV)
-{
-  unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
-  unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
-  unsigned int fi = i*2;//full size image i
-  unsigned int fj = j*2;//full size image j
-  unsigned int fw = w*2;//full size image w
-  unsigned int fh = h*2;//full size image h
-  unsigned int u_idx = i*2 + j*w*2;
-  unsigned int v_idx = i*2 + j*w*2 + 1;
-  if(fi<fw-1 && fj<fh-1)
-  {
-    uchar4 argb1=pARGBImage[fj*fw+fi];
-    uchar4 argb2=pARGBImage[fj*fw+fi+1];
-    uchar4 argb3=pARGBImage[(fj+1)*fw+fi];
-    uchar4 argb4=pARGBImage[(fj+1)*fw+fi+1];
-
-    float U  = ARGB2U(argb1);
-    float U2 = ARGB2U(argb2);
-    float U3 = ARGB2U(argb3);
-    float U4 = ARGB2U(argb4);
-
-    float V =  ARGB2V(argb1);
-    float V2 = ARGB2V(argb2);
-    float V3 = ARGB2V(argb3);
-    float V4 = ARGB2V(argb4);
-
-    pNV12ImageUV[u_idx] = (U+U2+U3+U4)/4.0;
-    pNV12ImageUV[v_idx] = (V+V2+V3+V4)/4.0;
-  }
 }
 
 __global__ static void CudaProcessRGBA2UV(int w, int h, int linesize, uchar4 * pRGBAImage, unsigned char * pNV12ImageUV)
@@ -197,55 +153,17 @@ __global__ static void CudaProcessRGB2UV(int w, int h, int linesize, uchar3 * pR
   }
 }
 
-__global__ static void CudaProcessNV122ARGB(int w, int h, unsigned char * pNV12Image, uchar4 * pARGBImage)
+__global__ static void CudaProcessNV122RGBA(int w, int h, int linesize, unsigned char * pNV12Image, uchar4 * pRGBAImage)
 {
   unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
   unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
   if(i<w && j<h)
   {
-    unsigned int u_idx = (j/2*w/2 + i/2)*2;
+    unsigned int u_idx = (j/2*linesize/2 + i/2)*2;
     unsigned int v_idx = u_idx + 1;
     
-    unsigned int offset_idx = w*h;
-    unsigned int pixel_idx = j*w+i;
-    unsigned int channel = threadIdx.z;
-    
-    if ( channel == 0 ) {
-        pARGBImage[w*j+i].x = 0;
-    } else if ( channel == 1) {
-        pARGBImage[w*j+i].y = clamp(
-                                (pNV12Image[pixel_idx]-16) * 1.164 +
-                                0 +
-                                (pNV12Image[offset_idx+v_idx]-128) * 1.596
-                                , 0, 255);
-    } else if ( channel == 2) {
-        pARGBImage[w*j+i].z = clamp(
-                                (pNV12Image[pixel_idx]-16) * 1.164 +
-                                (pNV12Image[offset_idx+u_idx]-128) * -0.392 +
-                                (pNV12Image[offset_idx+v_idx]-128) * -0.813
-                                , 0, 255);
-    } else if ( channel == 3) {
-        pARGBImage[w*j+i].w = clamp(
-                                (pNV12Image[pixel_idx]-16) * 1.164 +
-                                (pNV12Image[offset_idx+u_idx]-128) * 2.017 +
-                                0
-                                , 0, 255);
-    }
-  }
-}
-
-
-__global__ static void CudaProcessNV122RGBA(int w, int h, unsigned char * pNV12Image, uchar4 * pRGBAImage)
-{
-  unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
-  unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
-  if(i<w && j<h)
-  {
-    unsigned int u_idx = (j/2*w/2 + i/2)*2;
-    unsigned int v_idx = u_idx + 1;
-    
-    unsigned int offset_idx = w*h;
-    unsigned int pixel_idx = j*w+i;
+    unsigned int offset_idx = linesize*h;
+    unsigned int pixel_idx = j*linesize+i;
     unsigned int channel = threadIdx.z;
     
     if ( channel == 0 ) {
@@ -273,18 +191,18 @@ __global__ static void CudaProcessNV122RGBA(int w, int h, unsigned char * pNV12I
 }
 
 
-__global__ static void CudaProcessNV122RGB(int w, int h, unsigned char * pNV12Image, uchar3 * pRGBImage)
+__global__ static void CudaProcessNV122RGB(int w, int h, int linesize, unsigned char * pNV12Image, uchar3 * pRGBImage)
 {
   unsigned int i = blockIdx.x*blockDim.x + threadIdx.x;
   unsigned int j = blockIdx.y*blockDim.y + threadIdx.y; 
   if(i<w && j<h)
   {
-    unsigned int u_idx = (j/2*w/2 + i/2)*2;
+    unsigned int u_idx = (j/2*linesize/2 + i/2)*2;
     unsigned int v_idx = u_idx + 1;
-    unsigned int offset_idx = w*h;
-    unsigned int pixel_idx = j*w+i;
+    unsigned int offset_idx = linesize*h;
+    unsigned int pixel_idx = j*linesize+i;
     unsigned int channel = threadIdx.z;
-    
+
     if ( channel == 1) {
         pRGBImage[w*j+i].x = clamp(
                                 (pNV12Image[pixel_idx]-16) * 1.164 +
@@ -486,44 +404,15 @@ extern "C"
   }
 
 
-/*******************************************************************/
-
-
-  // I really think the code is actually using RGBA instead of ARGB
-  cudaError launch_CudaARGB2NV12Process(int w, int h, int align, CUdeviceptr pARGBImage, CUdeviceptr pNV12Image )
-  {
-    {
-      dim3 dimBlock(16, 16, 1);
-      dim3 dimGrid(((w)+dimBlock.x-1)/dimBlock.x, ((h)+dimBlock.y-1)/dimBlock.y, 1);
-      CudaProcessARGB2Y<<<dimGrid, dimBlock>>>(w, h, (uchar4 *)pARGBImage, (unsigned char *)pNV12Image);
-    }
-    {
-      dim3 dimBlock(16, 16, 1);
-      dim3 dimGrid(((w/2)+dimBlock.x-1)/dimBlock.x, ((h/2)+dimBlock.y-1)/dimBlock.y, 1);
-      CudaProcessARGB2UV<<<dimGrid, dimBlock>>>(w/2, h/2, (uchar4 *)pARGBImage, ((unsigned char *)pNV12Image)+w*h);
-    }
-    cudaError err = cudaGetLastError();
-    return err;
-  }
-  
-
-  cudaError launch_CudaNV12TOARGBProcess(int w, int h, int align, CUdeviceptr pNV12Image, CUdeviceptr pARGBImage )
-  {
-    {
-      dim3 dimBlock(16, 16, 4); // might be a bad idea to use 1024 threads per SM;
-      dim3 dimGrid(((w)+dimBlock.x-1)/dimBlock.x, ((h)+dimBlock.y-1)/dimBlock.y, 1);
-      CudaProcessNV122ARGB<<<dimGrid, dimBlock>>>(w, h, (unsigned char *)pNV12Image, (uchar4 *)pARGBImage);
-    }
-    cudaError err = cudaGetLastError();                                
-    return err;
-  }
+/*****************************not used any more**************************************/
 
   cudaError launch_CudaNV12TORGBAProcess(int w, int h, int align, CUdeviceptr pNV12Image, CUdeviceptr pRGBAImage )
   {
+    int linesize = std::ceil(((float) w)/align) * align;
     {
       dim3 dimBlock(16, 16, 4); // might be a bad idea to use 1024 threads per SM;
       dim3 dimGrid(((w)+dimBlock.x-1)/dimBlock.x, ((h)+dimBlock.y-1)/dimBlock.y, 1);
-      CudaProcessNV122RGBA<<<dimGrid, dimBlock>>>(w, h, (unsigned char *)pNV12Image, (uchar4 *)pRGBAImage);
+      CudaProcessNV122RGBA<<<dimGrid, dimBlock>>>(w, h, linesize, (unsigned char *)pNV12Image, (uchar4 *)pRGBAImage);
     }
     cudaError err = cudaGetLastError();                                
     return err;
@@ -531,10 +420,11 @@ extern "C"
 
   cudaError launch_CudaNV12TORGBProcess(int w, int h, int align, CUdeviceptr pNV12Image, CUdeviceptr pRGBImage )
   {
+    int linesize = std::ceil(((float) w)/align) * align;
     {
       dim3 dimBlock(16, 16, 4);
       dim3 dimGrid(((w)+dimBlock.x-1)/dimBlock.x, ((h)+dimBlock.y-1)/dimBlock.y, 1);
-      CudaProcessNV122RGB<<<dimGrid, dimBlock>>>(w, h, (unsigned char *)pNV12Image, (uchar3 *)pRGBImage);
+      CudaProcessNV122RGB<<<dimGrid, dimBlock>>>(w, h, linesize, (unsigned char *)pNV12Image, (uchar3 *)pRGBImage);
     }
     cudaError err = cudaGetLastError();                                
     return err;
