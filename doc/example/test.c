@@ -90,8 +90,8 @@ void SaveBufferBit(uint8_t *data, int length, char *str) {
 int main( int argc, char* argv[] ) {
 
     nvpipe* codec_1 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
-    //nvpipe* codec_1 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_SOFTWARE);
     nvpipe* codec_2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
+    nvpipe* codec_3 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
 
     
     int width = 1920;
@@ -138,24 +138,42 @@ int main( int argc, char* argv[] ) {
             //formatConversionReuseMemory(width, height, 1, img_buffer, pkt_buffer, NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12, &memgpu2_);
             //SaveBufferBit(pkt_buffer, width*height*3/2, "nv12.yuv");
         }
-        if ( !nvpipe_encode(codec_1, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGBA) ) {
-            SaveBufferBit(pkt_buffer, pkt_buffer_size, "file.264");
-            if ( !nvpipe_decode(codec_1, pkt_buffer, pkt_buffer_size, img_buffer, img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGBA) ) {
-                //if ( i == 0 ) {
-                sprintf(image_filename, "decoded_%d.pgm", i);
-                SaveBufferRGBA(img_buffer, width, height, image_filename);
-                //}
+        
+        if ( i == 0 ) {
+            if ( !nvpipe_encode(codec_1, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGBA) ) {
+                SaveBufferBit(pkt_buffer, pkt_buffer_size, "file.264");
+                if ( !nvpipe_decode(codec_1, pkt_buffer, pkt_buffer_size, img_buffer, img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGBA) ) {
+                    //if ( i == 0 ) {
+                    sprintf(image_filename, "decoded_%d.pgm", i);
+                    SaveBufferRGBA(img_buffer, width, height, image_filename);
+                    //}
+                } else {
+                    printf("something went wrong\n");
+                }
             } else {
-                printf("something went wrong\n");
+                printf("what happened?\n");
             }
         } else {
-            printf("what happened?\n");
+            if ( !nvpipe_encode(codec_3, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGBA) ) {
+                SaveBufferBit(pkt_buffer, pkt_buffer_size, "file.264");
+                if ( !nvpipe_decode(codec_1, pkt_buffer, pkt_buffer_size, img_buffer, img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGBA) ) {
+                    //if ( i == 0 ) {
+                    sprintf(image_filename, "decoded_%d.pgm", i);
+                    SaveBufferRGBA(img_buffer, width, height, image_filename);
+                    //}
+                } else {
+                    printf("something went wrong\n");
+                }
+            } else {
+                printf("what happened?\n");
+            }
         }
     }
 
     destroyMemGpu2(&memgpu2_);
     nvpipe_destroy_instance(codec_1);
     nvpipe_destroy_instance(codec_2);
+    nvpipe_destroy_instance(codec_3);
     free(img_buffer);
     free(pkt_buffer);
     return 0;
