@@ -49,16 +49,14 @@ void SaveBufferRGBA(uint8_t *data, int width, int height, char *str) {
   fclose(pFile);
 }
 
-void doStuff(const int sockfd)
+void doStuff(const int newsockfd)
 {
     nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
-    //int width = 1920;
-    //int height = 1080;
     int width = 100;
     int height = 50;
-    int count = 5;
+    int count = 50;
     int sync = 1;
-
+        
     size_t buffer_size = sizeof(uint8_t)*width*height*4;
     void* img_buffer = malloc(buffer_size);
     size_t img_buffer_size = buffer_size;
@@ -68,21 +66,32 @@ void doStuff(const int sockfd)
     char image_filename[20];
     
     for (int i = 0; i < count; i++ ) {
-        //if ( i != 0) nvtxRangePushA("receiving end");
-        if (sync) {
-            pkt_buffer_size = read(sockfd,pkt_buffer, buffer_size);
-            write(sockfd, &pkt_buffer_size, sizeof(pkt_buffer_size));
-        } else {
-            read(sockfd,&pkt_buffer_size,sizeof(pkt_buffer_size));
-            read(sockfd,pkt_buffer,pkt_buffer_size);
+        //if ( i != 0) nvtxRangePushA("sending end");
+        pkt_buffer_size = buffer_size;
+        for(size_t y=0;y<height;y++) {
+            for(size_t x=0;x<width;x++) {
+                int index = y * width + x;
+                img_ptr0[index*4] = x+y+i*5;//x+y;
+                img_ptr0[index*4+1] = x+i*10;//x;
+                img_ptr0[index*4+2] = 0;
+                img_ptr0[index*4+3] = 255;
+            }
         }
-        printf("pkt_buffer_size: %zu\n", pkt_buffer_size);
 
-        if ( !nvpipe_decode(codec, pkt_buffer, pkt_buffer_size, img_buffer, img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGBA) ) {
-            //sprintf(image_filename, "decoded_%d.pgm", i);
-            //SaveBufferRGBA(img_buffer, width, height, image_filename);
+        //sprintf(image_filename, "original_%d.pgm", i);
+        //SaveBufferRGBA(img_buffer, width, height, image_filename);
+
+        if ( !nvpipe_encode(codec, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGBA) ) {
+            printf("pkt_buffer_size: %zu\n", pkt_buffer_size);
+            if ( sync ) {
+                write(newsockfd,pkt_buffer,pkt_buffer_size);
+                read(newsockfd,&pkt_buffer_size,sizeof(pkt_buffer_size));
+            } else {
+                write(newsockfd,&pkt_buffer_size,sizeof(pkt_buffer_size));
+                write(newsockfd,pkt_buffer,pkt_buffer_size);
+            }
         } else {
-            printf("something went wrong\n");
+            printf("what happened?\n");
         }
         //if ( i != 0) nvtxRangePop();
     }

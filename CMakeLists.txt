@@ -89,7 +89,7 @@ if (PKG_CONFIG_FOUND)
 endif(PKG_CONFIG_FOUND)
 
 # some extra lib needed
-target_link_libraries (${NVPIPE} "-lm -lX11 -lva -lva-drm -lva-x11")
+#target_link_libraries (${NVPIPE} "-lm -lX11 -lva -lva-drm -lva-x11")
 target_link_libraries(${NVPIPE} "-lnvToolsExt")
 
 # build example application
