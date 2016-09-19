@@ -156,7 +156,7 @@ int main( int argc, char* argv[] ) {
 
     uint8_t* img_buffer = (uint8_t*)pa_alloc(buffer_size);
 
-    uint8_t* pkt_buffer = (uint8_t*)pa_alloc(buffer_size * repeat / 100);
+    uint8_t* pkt_buffer = (uint8_t*)pa_alloc(buffer_size * repeat / 10);
 
     MemoryStack img_stack(img_buffer, buffer_size);
     MemoryStack pkt_stack(pkt_buffer, buffer_size/8);
@@ -173,7 +173,7 @@ int main( int argc, char* argv[] ) {
 
         if ( input_flag ) {
             img_stack.loadBufferFromFileList(   input_flag,
-                                                PLAIN_DATA,
+                                                RGB_PICTURE,
                                                 frame_number);
         } else {
             for ( int i = 0; i < frame_number; i++ ) {
@@ -192,10 +192,10 @@ int main( int argc, char* argv[] ) {
 
         if ( output_file && save_image_flag ) {
             sprintf(file_name, "%s_encoded", output_file);
-            img_stack.writeBufferToFileList(file_name,
-                                            RGB_PICTURE,
-                                            width,
-                                            height);
+//            img_stack.writeBufferToFileList(file_name,
+//                                            RGB_PICTURE,
+//                                            width,
+//                                            height);
         }
         ptr = pkt_stack.getBufferHandle();
 
@@ -262,6 +262,9 @@ int main( int argc, char* argv[] ) {
         if ( output_file ) {
             sprintf(file_name, "%s.264", output_file);
             pkt_stack.writeBufferToFile(file_name);
+            pkt_stack.writeBufferToFileList("outputPacket",
+                                            PACKET_DATA,
+                                            0, 0);
         }
 
     }
@@ -272,6 +275,10 @@ int main( int argc, char* argv[] ) {
         int decode_width = width;
         int decode_height = height;
         if ( !encoding_flag ) {
+            printf("load decoding!\n");
+            pkt_stack.loadBufferFromFileList(input_flag,
+                                             PACKET_DATA,
+                                             frame_number);
             // load from file, write it later maybe
         }
 
@@ -286,11 +293,17 @@ int main( int argc, char* argv[] ) {
             //}
             
             index = i % frame_number;
+            printf("index: %d, packet size: %zu", i, current_packet_size);
             nvpipe_decode(  codec,
                             pkt_stack.getBufferHandle(i), current_packet_size,
                             img_stack.getBufferHandle(index), image_size,
                             &decode_width, &decode_height,
                             NVPIPE_IMAGE_FORMAT_RGB);
+            printf("width: %d, height: %d\n", decode_width, decode_height);
+            if ( !encoding_flag ) {
+                img_stack.pushBuffer(image_size);
+            }
+            SaveBufferRGB(img_stack.getBufferHandle(index), decode_width, decode_height, "test.pgm" );
             //if ( flag )
                 //nvtxRangePop();
             //else
@@ -310,6 +323,7 @@ int main( int argc, char* argv[] ) {
         }
     }
 
+    nvpipe_destroy_instance(codec);
     free(img_buffer);
     free(pkt_buffer);
     return 0;

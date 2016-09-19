@@ -52,10 +52,10 @@ void SaveBufferRGBA(uint8_t *data, int width, int height, char *str) {
 void doStuff(const int newsockfd)
 {
     nvpipe* codec = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE);
-    int width = 100;
-    int height = 50;
-    int count = 50;
-    int sync = 1;
+    int width = 1920;
+    int height = 1080;
+    int count = 500;
+    int sync = 0;
         
     size_t buffer_size = sizeof(uint8_t)*width*height*4;
     void* img_buffer = malloc(buffer_size);

@@ -33,13 +33,13 @@ add_executable(client_app ${CMAKE_SOURCE_DIR}/doc/example/client.c)
 target_link_libraries(client_app ${NVPIPE})
 add_executable(server_app ${CMAKE_SOURCE_DIR}/doc/example/server.c)
 target_link_libraries(server_app ${NVPIPE})
-#add_executable(benchmark 
-#cuda_add_executable(benchmark 
-#                ${CMAKE_SOURCE_DIR}/doc/example/benchmark.cxx
-#                ${CMAKE_SOURCE_DIR}/doc/example/file_io.cxx)
 
-#target_link_libraries(benchmark ${NVPIPE})
-#target_link_libraries(benchmark "-lnvToolsExt")
+#add_executable(benchmark 
+cuda_add_executable(benchmark 
+                ${CMAKE_SOURCE_DIR}/doc/example/benchmark.cxx
+                ${CMAKE_SOURCE_DIR}/doc/example/file_io.cxx)
+target_link_libraries(benchmark ${NVPIPE})
+target_link_libraries(benchmark "-lnvToolsExt")
 
 #add_executable(benchmark 
 #cuda_add_executable(benchmark_v2

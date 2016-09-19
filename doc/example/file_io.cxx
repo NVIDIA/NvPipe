@@ -109,6 +109,27 @@ size_t ReadFromFile(std::string file_name, void* data, size_t size) {
     return read_size;
 }
 
+size_t ReadPgmFromFile(std::string file_name, void* data, size_t skip, size_t size) {
+    FILE *pFile;
+    size_t read_size;
+    // Open file
+    pFile=fopen(file_name.c_str(), "rb");
+
+    if(pFile==NULL) {
+        printf("something went wrong\n");
+        return 0;
+    }
+
+    fread(data, 1, skip, pFile);
+    // read data
+    read_size = fread(data, 1, size, pFile);
+
+    // Close file
+    fclose(pFile);
+
+    return read_size;
+}
+
 
 MemoryStack::MemoryStack(uint8_t *buffer, size_t buffer_size) {
     initialize(buffer, buffer_size);
@@ -223,28 +244,53 @@ void MemoryStack::loadBufferFromFileList(
                     std::string file_name, enum Buffer_Type buffer_type,
                     int length) {
     std::string str_template = file_name;
+    size_t bufferSize;
     switch(buffer_type) {
     case PLAIN_DATA:
     case RGBA_PICTURE:
+        {
         str_template = str_template + "%d";
+        char str[50];
+        for ( int i = 0; i < length; i++ ) {
+            sprintf(str, str_template.c_str(), i);
+            bufferSize = ReadFromFile(  str, getBufferHandle(), 
+                                            getRemainingSpace() );
+            pushBuffer(bufferSize);
+        }
         break;
+        }
     case RGB_PICTURE:
-        str_template = str_template + "%d.pgm";
+        {
+        str_template = str_template + "%d.gpm";
+        char str[50];
+        for ( int i = 0; i < length; i++ ) {
+            sprintf(str, str_template.c_str(), i);
+            bufferSize = ReadPgmFromFile(   str, getBufferHandle(), 
+                                            17,
+                                            getRemainingSpace() );
+//            printf("reading: %s, size: %zu, remaining: %zu\n", str, bufferSize, getRemainingSpace());
+            pushBuffer(bufferSize);
+        }
         break;
+        }
     case PACKET_DATA:
+        {
         str_template = str_template + "%d.pkt";
+        char str[50];
+        size_t bufferSize;
+        for ( int i = 0; i < length; i++ ) {
+            sprintf(str, str_template.c_str(), i);
+            printf ("%s\n", str);
+            bufferSize = ReadFromFile(  str, getBufferHandle(), 
+                                            getRemainingSpace() );
+            pushBuffer(bufferSize);
+        }
         break;
+        }
     }
 
     //printf( "%s, %s\n", file_name.c_str(), str_template.c_str() );
 
-    char str[50];
-    size_t bufferSize;
-    for ( int i = 0; i < length; i++ ) {
-        sprintf(str, str_template.c_str(), i);
-        bufferSize = ReadFromFile(  str, getBufferHandle(), 
-                                        getRemainingSpace() );
-        pushBuffer(bufferSize);
-    }
+    
 }
 

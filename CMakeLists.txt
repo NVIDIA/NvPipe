@@ -23,6 +23,7 @@ configure_file(
     "${project_config}" @ONLY)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -std=c99 -pthread -fPIC")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pthread -fPIC")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11 -pthread -fPIC")
 
 option(NVPIPE_BUILD_EXAMPLE "" OFF)
@@ -31,7 +32,7 @@ find_package(CUDA)
 
 include_directories(${CMAKE_SOURCE_DIR} ${CUDA_SDK_ROOT_DIR}/common/inc)
 link_directories("${CUDA_TOOLKIT_ROOT_DIR}/lib64")
-link_directories("${CMAKE_INSTALL_PREFIX}/lib64")
+link_directories("${CMAKE_INSTALL_PREFIX}/lib")
 
 cuda_add_library(${NVPIPE}
     ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec.cxx
