@@ -39,11 +39,11 @@ extern "C"
 class NvPipeCodec264 : public NvPipeCodec {
 
 public:
-    virtual int encode( void* buffer,
+    virtual NVPipeErrorID encode( void* buffer,
                         size_t &size,
                         enum NVPipeImageFormat format);
 
-    virtual int decode( void* picture, 
+    virtual NVPipeErrorID decode( void* picture, 
                         int &width, 
                         int &height, 
                         size_t &size,
@@ -80,7 +80,7 @@ private:
             enum NVPipeImageFormatConversion &conversion_flag,
             enum AVPixelFormat &pixel_format);
 
-    // append 2 dummy access delimiter NAL at the end.
+    // append 2 dummy access delimiter NAL units at the end.
     void appendDummyNAL(void* buffer, size_t offset);
 
     bool encoder_config_corrupted_;

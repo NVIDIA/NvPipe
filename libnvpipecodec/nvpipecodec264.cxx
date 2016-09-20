@@ -10,6 +10,7 @@
  *
  */
 #include "libnvpipecodec/nvpipecodec264.h"
+#include "libnvpipeutil/nvpipeError.h"
 #include <cstdio>
 #include <limits>
 #include <cmath>
@@ -110,16 +111,14 @@ void NvPipeCodec264::setBitrate( int64_t bitrate ) {
     }
 }
 
-int NvPipeCodec264::encode( void* buffer, 
+NVPipeErrorID NvPipeCodec264::encode( void* buffer, 
                             size_t &output_buffer_size,
                             enum NVPipeImageFormat format) {
 
-    int result = 0;
+    NVPipeErrorID result = 0;
 
     if (width_ == 0 || height_ == 0 ) {
-            printf("input frame has to be defined \
-                    before calling NvPipeCodec264::encoding");
-            return -1;
+            return static_cast<int>(NVPIPE_ERR_INVALID_RESOLUTION);
     }
 
     if (format != encoder_format_) {
@@ -135,18 +134,19 @@ int NvPipeCodec264::encode( void* buffer,
         encoder_codec_ = 
             avcodec_find_encoder_by_name(getEncoderName().c_str());
         if (encoder_codec_ == NULL) {
-            printf("cannot find encoder: %s", getEncoderName().c_str());
-            return -1;
+            return static_cast<int>(
+                   NVPIPE_ERR_FFMPEG_CAN_NOT_FIND_ENCODER);
         }
 
         encoder_frame_ = av_frame_alloc();
         if (encoder_frame_ == NULL) {
-            printf("cannot allocate frame");
-            return -1;
+            return static_cast<int>(
+                   NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_FRAME);
         }
 
         if ( configureEncoderContext() != 0 ) {
-            return -1;
+            return static_cast<int>(
+                   NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_CONTEXT);
         }
 
         encoder_config_corrupted_ = false;
@@ -159,7 +159,8 @@ int NvPipeCodec264::encode( void* buffer,
         av_free(encoder_context_);
 
         if ( configureEncoderContext() != 0 ) {
-            return -1;
+            return static_cast<int>(
+                   NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_CONTEXT);
         }
 
         encoder_config_corrupted_ = false;
@@ -185,7 +186,6 @@ int NvPipeCodec264::encode( void* buffer,
                 if ( encoder_converted_image_buffer_size_ < 
                                                 num_pixels * 3 / 2 ) {
                     if ( encoder_converted_image_buffer_ ) {
-                        //printf("free format conversion buffer in encoder");
                         free( encoder_converted_image_buffer_ );
                     }
 
@@ -211,8 +211,8 @@ int NvPipeCodec264::encode( void* buffer,
                                     width_,
                                     height_,
                                     AVFRAME_LINESIZE_ALIGNMENT ) < 0 ) {
-            printf("could not associate image buffer to frame");
-            return -1;
+            return static_cast<int>(
+                   NVPIPE_ERR_FFMPEG_CAN_NOT_BOUND_FRAME);
         }
         encoder_frame_buffer_corrupted_ = false;
     }
@@ -223,7 +223,8 @@ nvtxRangePushA("encodingFormatConversionSession");
     switch ( encoder_conversion_flag_ ) {
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGBA_TO_NV12:
-        formatConversionReuseMemory(width_, height_, AVFRAME_LINESIZE_ALIGNMENT,
+        formatConversionReuseMemory(width_, height_,
+                                    AVFRAME_LINESIZE_ALIGNMENT,
                                     frame_,
                                     encoder_converted_image_buffer_,
                                     encoder_conversion_flag_,
@@ -244,43 +245,21 @@ nvtxRangePushA("encodingFfmpegAPISession");
     encoder_packet_.size = 0;
 
     int ret = avcodec_send_frame(encoder_context_, encoder_frame_);
-    // debug information (remove before release)
     if ( ret < 0 ){
-        printf("\nreceive_packet went wrong! %d\n", ret);
-        switch(ret) {
-            case AVERROR(EOF):
-                printf("eof\n");
-                break;
-            case AVERROR(EAGAIN):
-                printf("EAGAIN\n");
-                break;
-            case AVERROR(EINVAL):
-                printf("EINVAL\n");
-                break;
-            case AVERROR(ENOMEM):
-                printf("ENOMEN\n");
-                break;
-        }
+        result = static_cast<int>(NVPIPE_ERR_FFMPEP_SEND_FRAME);
     }
 
     ret = avcodec_receive_packet(encoder_context_, &encoder_packet_);
-    // debug information (remove before release)
     if ( ret < 0 ){
-        printf("\nreceive_packet went wrong! %d\n", ret);
-        switch(ret) {
-            case AVERROR(EOF):
-                printf("eof\n");
-                break;
-            case AVERROR(EAGAIN):
-                printf("EAGAIN\n");
-                break;
-            case AVERROR(EINVAL):
-                printf("EINVAL\n");
-                break;
-            case AVERROR(ENOMEM):
-                printf("ENOMEN\n");
-                break;
+        if ( ret == AVERROR(EAGAIN) ) {
+            result = static_cast<int>(
+                     NVPIPE_ERR_FFMPEG_LATENCY_OUTPUT_NOT_READY);
+        } else {
+            result = static_cast<int>(NVPIPE_ERR_FFMPEP_RECEIVE_PACKET);
         }
+        av_packet_unref(&encoder_packet_);
+        output_buffer_size = 0;
+        return result;
     }
 
     unsigned int packet_size = encoder_packet_.size > 0 ?
@@ -288,10 +267,8 @@ nvtxRangePushA("encodingFfmpegAPISession");
     if ( packet_size < output_buffer_size ) {
         memcpy(buffer, encoder_packet_.data, encoder_packet_.size);
         appendDummyNAL(buffer, encoder_packet_.size);
-        result = 1;
     } else {
-        printf("packet size larger than  buffer_size went wrong!\n");
-        result = -1;
+        result = static_cast<int>(NVPIPE_ERR_OUTPUT_BUFFER_OVERFLOW);
     }
 
     // output the packet size;
@@ -301,15 +278,16 @@ nvtxRangePushA("encodingFfmpegAPISession");
 // AJ profiling
 nvtxRangePop();
 
-
     return result;
 }
 
-int NvPipeCodec264::decode( void* output_picture, 
-                            int &width, 
-                            int &height, 
-                            size_t &output_size,
-                            enum NVPipeImageFormat format ) {
+NVPipeErrorID NvPipeCodec264::decode( void* output_picture, 
+                                      int &width, 
+                                      int &height, 
+                                      size_t &output_size,
+                                      enum NVPipeImageFormat format ) {
+
+    NVPipeErrorID result = 0;
 
     enum AVPixelFormat pixel_format;
 
@@ -319,27 +297,27 @@ int NvPipeCodec264::decode( void* output_picture,
         decoder_codec_ = 
             avcodec_find_decoder_by_name(getDecoderName().c_str());
         if (decoder_codec_ == NULL) {
-            printf("cannot find decoder: %s", getDecoderName().c_str());
-            return -1;
+            return static_cast<int>(
+                   NVPIPE_ERR_FFMPEG_CAN_NOT_FIND_DECODER);
         }
 
         decoder_context_ = avcodec_alloc_context3(decoder_codec_);
         if (decoder_context_ == NULL) {
-            printf("cannot allocate codec context");
-            return -1;
+            return static_cast<int>(
+                   NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_CONTEXT);
         }
 
         decoder_frame_ = av_frame_alloc();
         if (decoder_frame_ == NULL) {
-            printf("cannot allocate frame");
-            return -1;
+            return static_cast<int>(
+                   NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_FRAME);
         }
 
         decoder_context_->delay = 0;
         if (avcodec_open2(decoder_context_, 
                             decoder_codec_, NULL) < 0) {
-            printf("cannot open codec\n");
-            return -1;
+            return static_cast<int>(
+                   NVPIPE_ERR_FFMPEG_CAN_NOT_OPEN_CODEC);
         }
         decoder_config_corrupted_ = false;
     }
@@ -353,8 +331,8 @@ int NvPipeCodec264::decode( void* output_picture,
         avcodec_close(decoder_context_);
         if (avcodec_open2(decoder_context_, 
                             decoder_codec_, NULL) < 0) {
-            printf("cannot open codec\n");
-            return -1;
+            return static_cast<int>(
+                   NVPIPE_ERR_FFMPEG_CAN_NOT_OPEN_CODEC);
         }
         decoder_config_corrupted_ = false;
     }
@@ -368,7 +346,8 @@ nvtxRangePushA("decodingFfmpegAPISession");
 
     if ( avcodec_send_packet(   decoder_context_,
                                 &decoder_packet_) != 0 ) {
-        printf("send_packet went wrong!\n");
+        result = static_cast<int>(
+               NVPIPE_ERR_FFMPEG_SEND_PACKET);
     }
 
     int ret = avcodec_receive_frame( decoder_context_,
@@ -377,19 +356,21 @@ nvtxRangePushA("decodingFfmpegAPISession");
     if ( ret < 0 ){
         printf("\nreceive_frame went wrong! %d\n", ret);
         switch(ret) {
-            case AVERROR(EOF):
-                printf("eof\n");
-                break;
             case AVERROR(EAGAIN):
-                printf("EAGAIN\n");
+                result = static_cast<int>(
+                         NVPIPE_ERR_FFMPEG_LATENCY_OUTPUT_NOT_READY);
                 break;
-            case AVERROR(EINVAL):
-                printf("EINVAL\n");
-                break;
-            case AVERROR(ENOMEM):
-                printf("ENOMEN\n");
+            default:
+                result = static_cast<int>(
+                         NVPIPE_ERR_FFMPEG_RECEIVE_FRAME);
                 break;
         }
+        
+        av_packet_unref(&decoder_packet_);
+        output_size = 0;
+        width = 0;
+        height = 0;
+        return result;
     }
 
 // AJ profiling
@@ -411,9 +392,8 @@ nvtxRangePushA("decodingFormatConversionSession");
         if (frameSize > output_size ) {
             output_size = frameSize;
             av_packet_unref(&decoder_packet_);
-            printf("frame size larger than frame_buffer_size_,\
-                    something went wrong!\n");
-            return -1;
+            result = static_cast<int>(
+                     NVPIPE_ERR_FFMPEG_OUTPUT_BUFFER_OVERFLOW);
         }
         output_size = frameSize;
         formatConversionAVFrameRGBAReuseMemory( decoder_frame_,
@@ -424,7 +404,7 @@ nvtxRangePushA("decodingFormatConversionSession");
 // AJ profiling
 nvtxRangePop();
 
-        return 0;
+        return result;
         break;
     case NVPIPE_IMAGE_FORMAT_CONVERSION_NV12_TO_RGB:
         frameSize = width;
@@ -433,9 +413,8 @@ nvtxRangePop();
         if (frameSize > output_size ) {
             output_size = frameSize;
             av_packet_unref(&decoder_packet_);
-            printf("frame size larger than frame_buffer_size_,\
-                    something went wrong!\n");
-            return -1;
+            result = static_cast<int>(
+                     NVPIPE_ERR_FFMPEG_OUTPUT_BUFFER_OVERFLOW);
         }
         output_size = frameSize;
         formatConversionAVFrameRGBReuseMemory(  decoder_frame_,
@@ -447,7 +426,7 @@ nvtxRangePop();
 // AJ profiling
 nvtxRangePop();
 
-        return 0;
+        return result;
         break;
     default:
         frameSize = 0;
@@ -460,9 +439,8 @@ nvtxRangePop();
         if (frameSize > output_size ) {
             output_size = frameSize;
             av_packet_unref(&decoder_packet_);
-            printf("frame size larger than frame_buffer_size_,\
-                    something went wrong!\n");
-            return -1;
+            result = static_cast<int>(
+                     NVPIPE_ERR_FFMPEG_OUTPUT_BUFFER_OVERFLOW);
         }
         output_size = frameSize;
 
@@ -478,7 +456,7 @@ nvtxRangePop();
         }
 
         av_packet_unref(&decoder_packet_);
-        return 0;
+        return result;
     }
 
 }
@@ -507,7 +485,7 @@ int NvPipeCodec264::getFormatConversionEnum(
         conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
         break;
     default:
-        printf("unrecognized pixel format, set to NV12 as default");
+        //printf("unrecognized pixel format, set to NV12 as default");
         pixel_format = AV_PIX_FMT_NV12;
         conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
         return -1;
