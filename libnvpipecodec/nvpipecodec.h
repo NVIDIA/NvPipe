@@ -9,8 +9,8 @@
  * NVIDIA CORPORATION is strictly prohibited.
  *
  */
-#pragma once
-
+#ifndef NVPIPE_CODEC_H_
+#define NVPIPE_CODEC_H_
 #include "libnvpipeutil/format.h"
 #include <cstdlib>
 
@@ -88,3 +88,5 @@ protected:
 private:
 
 };
+
+#endif //NVPIPE_CODEC_H_

@@ -9,6 +9,8 @@
  * NVIDIA CORPORATION is strictly prohibited.
  *
  */
+#include <cmath>
+
 #include "libnvpipeutil/format.h"
 #include "libnvpipeutil/formatConversionCuda.h"
 
@@ -21,7 +23,7 @@ int formatConversionReuseMemory( int w, int h, int align,
             void* source,
             void* destination,
             enum NVPipeImageFormatConversion conversionEnum,
-            nvpipeMemGpu2 *mem_gpu2) 
+            nvpipeMemGPU *mem_gpu) 
 {
     unsigned int * d_sourcePtr;
     unsigned int * d_destinationPtr;
@@ -82,30 +84,28 @@ int formatConversionReuseMemory( int w, int h, int align,
         return -1;
     }
 
-    if (largeBufferSize > mem_gpu2->d_buffer_1_size_ ||
-        smallBufferSize > mem_gpu2->d_buffer_2_size_) {
-            allocateMemGpu2(mem_gpu2, largeBufferSize, smallBufferSize);
+    if (largeBufferSize > mem_gpu->d_buffer_1_size_ ||
+        smallBufferSize > mem_gpu->d_buffer_2_size_) {
+            allocateMemGPU(mem_gpu, largeBufferSize, smallBufferSize);
     }
-    (*smallBuffer) = mem_gpu2->d_buffer_2_;
-    (*largeBuffer) = mem_gpu2->d_buffer_1_;
+    (*smallBuffer) = mem_gpu->d_buffer_2_;
+    (*largeBuffer) = mem_gpu->d_buffer_1_;
 
-    checkCudaErrors(
-        cudaMemcpy( d_sourcePtr, source, sourceSize, 
-                    cudaMemcpyHostToDevice ));
+    cudaMemcpy( d_sourcePtr, source, sourceSize, 
+                cudaMemcpyHostToDevice );
 
     ret =   (*funcPtr)(w, h, align,
             (CUdeviceptr) d_sourcePtr, (CUdeviceptr) d_destinationPtr);
 
-    checkCudaErrors(
-        cudaMemcpy( destination, d_destinationPtr, 
-        destinationSize, cudaMemcpyDeviceToHost ));
+    cudaMemcpy( destination, d_destinationPtr, 
+                destinationSize, cudaMemcpyDeviceToHost );
 
     return ret;
 }
 
 int formatConversionAVFrameRGBReuseMemory( AVFrame *frame, int align,
                                 void *buffer,
-                                nvpipeMemGpu2 *mem_gpu2) {
+                                nvpipeMemGPU *mem_gpu) {
 
     switch( frame->format ) {
     case AV_PIX_FMT_NV12:
@@ -121,27 +121,23 @@ int formatConversionAVFrameRGBReuseMemory( AVFrame *frame, int align,
             size_t aligned_pixel_count = linesize * h * sizeof(uint8_t);
             size_t pixel_count = w * h * sizeof(uint8_t);
 
-            if (pixel_count*3 > mem_gpu2->d_buffer_1_size_ ||
-                pixel_count*3/2 > mem_gpu2->d_buffer_2_size_ ) {
-                allocateMemGpu2(mem_gpu2,
+            if (pixel_count*3 > mem_gpu->d_buffer_1_size_ ||
+                pixel_count*3/2 > mem_gpu->d_buffer_2_size_ ) {
+                allocateMemGPU(mem_gpu,
                                 pixel_count*3,
                                 aligned_pixel_count*3/2);
             }
 
-            d_bufferPtr = mem_gpu2->d_buffer_1_;
-            d_YPtr = mem_gpu2->d_buffer_2_;
+            d_bufferPtr = mem_gpu->d_buffer_1_;
+            d_YPtr = mem_gpu->d_buffer_2_;
 
-            //Alert!
-            //  ugly coade ahead: 
             //  pixel_count/4 because CUDA offset is per word!
-            d_UVPtr = mem_gpu2->d_buffer_2_ + aligned_pixel_count/4;
+            d_UVPtr = mem_gpu->d_buffer_2_ + aligned_pixel_count/4;
 
-            checkCudaErrors(
-                cudaMemcpy( d_YPtr, frame->data[0], aligned_pixel_count, 
-                            cudaMemcpyHostToDevice ));
-            checkCudaErrors(
-                cudaMemcpy( d_UVPtr, frame->data[1], aligned_pixel_count/2, 
-                            cudaMemcpyHostToDevice ));
+            cudaMemcpy( d_YPtr, frame->data[0], aligned_pixel_count, 
+                        cudaMemcpyHostToDevice );
+            cudaMemcpy( d_UVPtr, frame->data[1], aligned_pixel_count/2, 
+                        cudaMemcpyHostToDevice );
 
             int ret =   launch_CudaNV12TORGBProcessDualChannel(
                     frame->width, frame->height, align,
@@ -149,9 +145,8 @@ int formatConversionAVFrameRGBReuseMemory( AVFrame *frame, int align,
                     (CUdeviceptr) d_UVPtr,
                     (CUdeviceptr) d_bufferPtr);
 
-            checkCudaErrors(
-                cudaMemcpy( buffer, d_bufferPtr, 
-                pixel_count*3, cudaMemcpyDeviceToHost ));
+            cudaMemcpy( buffer, d_bufferPtr, 
+            pixel_count*3, cudaMemcpyDeviceToHost );
 
             return ret;
             break;
@@ -177,7 +172,7 @@ int formatConversionAVFrameRGBReuseMemory( AVFrame *frame, int align,
 }
 int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
                                 void *buffer,
-                                nvpipeMemGpu2 *mem_gpu2) {
+                                nvpipeMemGPU *mem_gpu) {
 
     switch( frame->format ) {
     case AV_PIX_FMT_NV12:
@@ -193,27 +188,23 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
             size_t aligned_pixel_count = linesize * h * sizeof(uint8_t);
             size_t pixel_count = w * h * sizeof(uint8_t);
 
-            if (pixel_count*4 > mem_gpu2->d_buffer_1_size_ ||
-                pixel_count*3/2 > mem_gpu2->d_buffer_2_size_ ) {
-                allocateMemGpu2(mem_gpu2,
+            if (pixel_count*4 > mem_gpu->d_buffer_1_size_ ||
+                pixel_count*3/2 > mem_gpu->d_buffer_2_size_ ) {
+                allocateMemGPU(mem_gpu,
                                 pixel_count*4,
                                 aligned_pixel_count*3/2);
             }
 
-            d_bufferPtr = mem_gpu2->d_buffer_1_;
-            d_YPtr = mem_gpu2->d_buffer_2_;
+            d_bufferPtr = mem_gpu->d_buffer_1_;
+            d_YPtr = mem_gpu->d_buffer_2_;
 
-            //Alert!
-            //  ugly coade ahead: 
             //  pixel_count/4 because CUDA offset is per word!
-            d_UVPtr = mem_gpu2->d_buffer_2_ + aligned_pixel_count/4;
+            d_UVPtr = mem_gpu->d_buffer_2_ + aligned_pixel_count/4;
 
-            checkCudaErrors(
-                cudaMemcpy( d_YPtr, frame->data[0], aligned_pixel_count,
-                            cudaMemcpyHostToDevice ));
-            checkCudaErrors(
-                cudaMemcpy( d_UVPtr, frame->data[1], aligned_pixel_count/2,
-                            cudaMemcpyHostToDevice ));
+            cudaMemcpy( d_YPtr, frame->data[0], aligned_pixel_count,
+                        cudaMemcpyHostToDevice );
+            cudaMemcpy( d_UVPtr, frame->data[1], aligned_pixel_count/2,
+                        cudaMemcpyHostToDevice );
             
             int ret =   launch_CudaNV12TORGBAProcessDualChannel(
                     frame->width, frame->height, align,
@@ -221,9 +212,8 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
                     (CUdeviceptr) d_UVPtr,
                     (CUdeviceptr) d_bufferPtr);
 
-            checkCudaErrors(
-                cudaMemcpy( buffer, d_bufferPtr,
-                pixel_count*4, cudaMemcpyDeviceToHost ));
+            cudaMemcpy( buffer, d_bufferPtr,
+                        pixel_count*4, cudaMemcpyDeviceToHost );
 
             return ret;
             break;
@@ -239,7 +229,7 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
             printf("formatConversionAVFrameRGBAReuseMemory AVFrame frame->format not supported yet\n");
             break;
         }
-    // hacking starts here:
+
     case AV_PIX_FMT_YUV420P:
         {
             unsigned int * d_YPtr;
@@ -254,31 +244,26 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
             size_t aligned_pixel_count = linesize * h * sizeof(uint8_t);
             size_t pixel_count = w * h * sizeof(uint8_t);
 
-            if (pixel_count*4 > mem_gpu2->d_buffer_1_size_ ||
-                pixel_count*3/2 > mem_gpu2->d_buffer_2_size_ ) {
-                allocateMemGpu2(mem_gpu2,
+            if (pixel_count*4 > mem_gpu->d_buffer_1_size_ ||
+                pixel_count*3/2 > mem_gpu->d_buffer_2_size_ ) {
+                allocateMemGPU(mem_gpu,
                                 pixel_count*4,
                                 aligned_pixel_count*3/2);
             }
 
-            d_bufferPtr = mem_gpu2->d_buffer_1_;
-            d_YPtr = mem_gpu2->d_buffer_2_;
+            d_bufferPtr = mem_gpu->d_buffer_1_;
+            d_YPtr = mem_gpu->d_buffer_2_;
 
-            //Alert!
-            //  ugly coade ahead: 
             //  pixel_count/4 because CUDA offset is per word!
-            d_UPtr = mem_gpu2->d_buffer_2_ + aligned_pixel_count/4;
+            d_UPtr = mem_gpu->d_buffer_2_ + aligned_pixel_count/4;
             d_VPtr = d_UPtr + aligned_pixel_count/16;
 
-            checkCudaErrors(
-                cudaMemcpy( d_YPtr, frame->data[0], aligned_pixel_count, 
-                            cudaMemcpyHostToDevice ));
-            checkCudaErrors(
-                cudaMemcpy( d_UPtr, frame->data[1], aligned_pixel_count/4, 
-                            cudaMemcpyHostToDevice ));
-            checkCudaErrors(
-                cudaMemcpy( d_VPtr, frame->data[2], aligned_pixel_count/4, 
-                            cudaMemcpyHostToDevice ));
+            cudaMemcpy( d_YPtr, frame->data[0], aligned_pixel_count, 
+                        cudaMemcpyHostToDevice );
+            cudaMemcpy( d_UPtr, frame->data[1], aligned_pixel_count/4, 
+                        cudaMemcpyHostToDevice );
+            cudaMemcpy( d_VPtr, frame->data[2], aligned_pixel_count/4, 
+                        cudaMemcpyHostToDevice );
 
             int ret =   launch_CudaYUV420PTORGBAProcessTriChannel(
                     frame->width, frame->height, align,
@@ -287,9 +272,8 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
                     (CUdeviceptr) d_VPtr,
                     (CUdeviceptr) d_bufferPtr);
 
-            checkCudaErrors(
-                cudaMemcpy( buffer, d_bufferPtr, 
-                pixel_count*4, cudaMemcpyDeviceToHost ));
+            cudaMemcpy( buffer, d_bufferPtr, 
+                        pixel_count*4, cudaMemcpyDeviceToHost );
 
             return ret;
             break;
@@ -308,31 +292,29 @@ int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
  * 
  **************************************************************/
 
-void destroyMemGpu2(nvpipeMemGpu2 *mem_gpu) {
+void destroyMemGPU(nvpipeMemGPU *mem_gpu) {
     if ( mem_gpu->d_buffer_1_ ) {
         mem_gpu->d_buffer_1_size_ = 0;
-        checkCudaErrors(cudaFree(mem_gpu->d_buffer_1_));
+        cudaFree(mem_gpu->d_buffer_1_);
     }
     if ( mem_gpu->d_buffer_2_ ) {
         mem_gpu->d_buffer_2_size_ = 0;
-        checkCudaErrors(cudaFree(mem_gpu->d_buffer_2_));
+        cudaFree(mem_gpu->d_buffer_2_);
     }
 }
 
-void allocateMemGpu2(   nvpipeMemGpu2 *mem_gpu,
+void allocateMemGPU(   nvpipeMemGPU *mem_gpu,
                         size_t size_1, size_t size_2) {
-    destroyMemGpu2(mem_gpu);
+    destroyMemGPU(mem_gpu);
 
-    checkCudaErrors(
-        cudaMalloc( (void **) &(mem_gpu->d_buffer_1_), size_1));
+    cudaMalloc( (void **) &(mem_gpu->d_buffer_1_), size_1);
     mem_gpu->d_buffer_1_size_ = size_1;
 
-    checkCudaErrors(
-        cudaMalloc( (void **) &(mem_gpu->d_buffer_2_), size_2));
+    cudaMalloc( (void **) &(mem_gpu->d_buffer_2_), size_2);
     mem_gpu->d_buffer_2_size_ = size_2;
 }
 
-void initializeMemGpu2(nvpipeMemGpu2 *mem_gpu) {
+void initializeMemGPU(nvpipeMemGPU *mem_gpu) {
     mem_gpu->d_buffer_1_size_= 0;
     mem_gpu->d_buffer_2_size_= 0;
     mem_gpu->d_buffer_1_ = NULL;

@@ -23,10 +23,7 @@ configure_file(
     "${project_config}" @ONLY)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -std=c99 -pthread -fPIC")
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -pthread -fPIC")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11 -pthread -fPIC")
-
-option(NVPIPE_BUILD_EXAMPLE "" OFF)
 
 find_package(CUDA)
 
@@ -35,9 +32,11 @@ link_directories("${CUDA_TOOLKIT_ROOT_DIR}/lib64")
 link_directories("${CMAKE_INSTALL_PREFIX}/lib")
 
 cuda_add_library(${NVPIPE}
+    ${CMAKE_SOURCE_DIR}/nvpipe.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipecodec/nvpipecodec264.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipeutil/util.cxx
+    ${CMAKE_SOURCE_DIR}/libnvpipeutil/format.cxx
     ${CMAKE_SOURCE_DIR}/libnvpipeutil/kernels.cu
     SHARED
 )
@@ -50,57 +49,62 @@ if (PKG_CONFIG_FOUND)
         target_link_libraries(${NVPIPE} ${AVDEVICE_LIBRARIES})
         include_directories(${AVDEVICE_INCLUDE_DIRS})
         link_directories(${AVDEVICE_LIBRARY_DIRS})
+    else (AVDEVICE_FOUND)
+        message( FATAL_ERROR "pkgcfg cannot find libavdevice.pc")
     endif(AVDEVICE_FOUND)
     pkg_check_modules(AVFILTER "libavfilter")
     if (AVFILTER_FOUND)    
         target_link_libraries(${NVPIPE} ${AVFILTER_LIBRARIES})
         include_directories(${AVFILTER_INCLUDE_DIRS})
         link_directories(${AVFILTER_LIBRARY_DIRS})
+    else (AVFILTER_FOUND)
+        message( FATAL_ERROR "pkgcfg cannot find libavfilter.pc")
     endif(AVFILTER_FOUND)
     pkg_check_modules(AVFORMAT "libavformat")
     if (AVFORMAT_FOUND)    
         target_link_libraries(${NVPIPE} ${AVFORMAT_LIBRARIES})
         include_directories(${AVFORMAT_INCLUDE_DIRS})
         link_directories(${AVFORMAT_LIBRARY_DIRS})
+    else (AVFORMAT_FOUND)
+        message( FATAL_ERROR "pkgcfg cannot find libavformat.pc")
     endif(AVFORMAT_FOUND)
     pkg_check_modules(AVCODEC "libavcodec")
     if (AVCODEC_FOUND)    
         target_link_libraries(${NVPIPE} ${AVCODEC_LIBRARIES})
         include_directories(${AVCODEC_INCLUDE_DIRS})
         link_directories(${AVCODEC_LIBRARY_DIRS})
+    else (AVCODEC_FOUND)
+        message( FATAL_ERROR "pkgcfg cannot find libavcodec.pc")
     endif(AVCODEC_FOUND)
     pkg_check_modules(AVSWRESAMPLE "libswresample")
     if (AVSWRESAMPLE_FOUND)    
         target_link_libraries(${NVPIPE} ${AVSWRESAMPLE_LIBRARIES})
         include_directories(${AVSWRESAMPLE_INCLUDE_DIRS})
         link_directories(${AVSWRESAMPLE_LIBRARY_DIRS})
+    else (AVSWRESAMPLE_FOUND)
+        message( FATAL_ERROR "pkgcfg cannot find libswresample.pc")
     endif(AVSWRESAMPLE_FOUND)
     pkg_check_modules(AVSWSCALE "libswscale")
     if (AVSWSCALE_FOUND)    
         target_link_libraries(${NVPIPE} ${AVSWSCALE_LIBRARIES})
         include_directories(${AVSWSCALE_INCLUDE_DIRS})
         link_directories(${AVSWSCALE_LIBRARY_DIRS})
+    else (AVSWSCALE_FOUND)
+        message( FATAL_ERROR "pkgcfg cannot find libswscale.pc")
     endif(AVSWSCALE_FOUND)
     pkg_check_modules(AVUTIL "libavutil")
     if (AVUTIL_FOUND)    
         target_link_libraries(${NVPIPE} ${AVUTIL_LIBRARIES})
         include_directories(${AVUTIL_INCLUDE_DIRS})
         link_directories(${AVUTIL_LIBRARY_DIRS})
+    else (AVUTIL_FOUND)
+        message( FATAL_ERROR "pkgcfg cannot find libavutil.pc")
     endif(AVUTIL_FOUND)
 endif(PKG_CONFIG_FOUND)
 
-# some extra lib needed
+# extra lib needed for benchmark
 target_link_libraries(${NVPIPE} "-lnvToolsExt")
 
-# build example application
-if (NVPIPE_BUILD_EXAMPLE)
-  add_subdirectory("./doc/example")
-endif(NVPIPE_BUILD_EXAMPLE)
-
 install(FILES nvpipe.h DESTINATION include)
-install(FILES libnvpipecodec/nvpipecodec264.h libnvpipecodec/nvpipecodec.h 
-        DESTINATION include/libnvpipecodec/)
-install(FILES libnvpipeutil/format.h libnvpipeutil/formatConversionCuda.h
-        DESTINATION include/libnvpipeutil/)
 install(TARGETS ${NVPIPE} DESTINATION lib)
 install(FILES "${project_config}" DESTINATION lib/cmake/${NVPIPE})

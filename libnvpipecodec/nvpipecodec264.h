@@ -9,7 +9,8 @@
  * NVIDIA CORPORATION is strictly prohibited.
  *
  */
-#pragma once
+#ifndef NVPIPE_CODEC_264_H_
+#define NVPIPE_CODEC_264_H_
 
 #ifdef __cplusplus
 extern "C"
@@ -72,9 +73,9 @@ protected:
 
 private:
 
-    _nvpipeMemGpu2 memgpu2_;
+    nvpipeMemGPU mem_gpu_;
 
-    int getFormatConversionEnum(
+    NVPipeErrorID getFormatConversionEnum(
             enum NVPipeImageFormat format,
             bool encoder_flag,
             enum NVPipeImageFormatConversion &conversion_flag,
@@ -83,12 +84,11 @@ private:
     // append 2 dummy access delimiter NAL units at the end.
     void appendDummyNAL(void* buffer, size_t offset);
 
-    bool encoder_config_corrupted_;
-    bool decoder_config_corrupted_;
+    bool encoder_config_dirty_;
+    bool decoder_config_dirty_;
 
-    bool encoder_frame_buffer_corrupted_;
+    bool encoder_frame_buffer_dirty_;
 
-    // not the best implementation.
     enum NVPipeImageFormatConversion encoder_conversion_flag_;
     void* encoder_converted_image_buffer_;
     size_t encoder_converted_image_buffer_size_;
@@ -100,5 +100,7 @@ private:
     std::string getEncoderName();
     std::string getDecoderName();
 
-    int configureEncoderContext();
+    NVPipeErrorID configureEncoderContext();
 };
+
+#endif //NVPIPE_CODEC_264_H_

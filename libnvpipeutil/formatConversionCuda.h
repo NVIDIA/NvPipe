@@ -9,7 +9,8 @@
  * NVIDIA CORPORATION is strictly prohibited.
  *
  */
-#pragma once
+#ifndef FORMAT_CONVERSION_CUDA_H_
+#define FORMAT_CONVERSION_CUDA_H_
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -65,3 +66,5 @@ cudaError launch_CudaNV12TORGBAProcess( int w, int h, int align,
 #ifdef __cplusplus
 }
 #endif
+
+#endif //FORMAT_CONVERSION_CUDA_H_

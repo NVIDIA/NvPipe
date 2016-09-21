@@ -9,7 +9,8 @@
  * NVIDIA CORPORATION is strictly prohibited.
  *
  */
-#pragma once
+#ifndef FORMAT_H_
+#define FORMAT_H_
 
 #include <stdlib.h>
 #include "libavformat/avformat.h"
@@ -37,21 +38,21 @@ enum NVPipeImageFormatConversion {
 };
 
 /// memory struct used to hold device buffer used for image format conversion
-typedef struct _nvpipeMemGpu2 {
+typedef struct _nvpipeMemGPU {
     unsigned int* d_buffer_1_;
     unsigned int* d_buffer_2_;
     size_t d_buffer_1_size_;
     size_t d_buffer_2_size_;
-} nvpipeMemGpu2;
+} nvpipeMemGPU;
 
-void initializeMemGpu2(nvpipeMemGpu2 *mem_gpu);
+void initializeMemGPU(nvpipeMemGPU *mem_gpu);
 
 /// allocate GPU memory for format conversion. free any memory already allocated
-void allocateMemGpu2(   nvpipeMemGpu2 *mem_gpu, 
+void allocateMemGPU(   nvpipeMemGPU *mem_gpu, 
                         size_t size_1, size_t size_2);
 
 /// free allocated GPU memory.
-void destroyMemGpu2(nvpipeMemGpu2 *mem_gpu);
+void destroyMemGPU(nvpipeMemGPU *mem_gpu);
 
 /*! \brief format conversion with reusing GPU memory
  *
@@ -63,7 +64,7 @@ int formatConversionReuseMemory( int w, int h, int align,
                         void* imagePtrSrc,
                         void* imagePtrDes,
                         enum NVPipeImageFormatConversion,
-                        nvpipeMemGpu2 *mem_gpu2);
+                        nvpipeMemGPU *mem_gpu);
 
 /*! \brief Convert AVframe (ffmpeg) frame to RGB buffer with reusing GPU memory
  *
@@ -73,7 +74,7 @@ int formatConversionReuseMemory( int w, int h, int align,
  */
 int formatConversionAVFrameRGBReuseMemory( AVFrame *frame, int align,
                                 void *buffer,
-                                nvpipeMemGpu2 *mem_gpu2);
+                                nvpipeMemGPU *mem_gpu);
 
 /*! \brief Convert AVframe (ffmpeg) frame to RGBA buffer with reusing GPU memory
  *
@@ -83,8 +84,10 @@ int formatConversionAVFrameRGBReuseMemory( AVFrame *frame, int align,
  */
 int formatConversionAVFrameRGBAReuseMemory( AVFrame *frame, int align,
                                 void *buffer,
-                                nvpipeMemGpu2 *mem_gpu2);
+                                nvpipeMemGPU *mem_gpu);
 
 #ifdef __cplusplus
 }
 #endif
+
+#endif //FORMAT_H_

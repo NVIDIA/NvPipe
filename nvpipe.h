@@ -17,6 +17,7 @@ extern "C" {
 #endif
 
 #include <stdlib.h>
+#include <stdint.h>
 
 /************************************************************
  *     API enums
@@ -74,8 +75,9 @@ typedef unsigned int NVPipeErrorID;
 
 /*! \brief create nvpipe instance
  *
- *      return a handle to the instance;
- *      used to initiate nvpipe_encode/nvpipe_decode API call
+ *  return 0 on success, otherwise, return < 0;
+ *  used to initiate context for nvpipe_encode / nvpipe_decode
+ *  API call
  *
  *  set bitrate used for encoder
  *      bitrate = 0 to use default bitrate calculated using Kush Gauge
@@ -90,14 +92,19 @@ typedef unsigned int NVPipeErrorID;
  *  source:
  *      http://www.adobe.com/content/dam/Adobe/en/devnet/
  */
-nvpipe* nvpipe_create_instance( enum NVPipeCodecID id, 
-                                uint64_t bitrate=0 );
+NVPipeErrorID nvpipe_create_instance( 
+                                      // [in] specify codec type
+                                      enum NVPipeCodecID id,
+                                      // [output] pointer to codec
+                                      nvpipe** const __restrict codec,
+                                      // [in] average bitrate
+                                      uint64_t bitrate );
 
 /*! \brief free nvpipe instance
  *
  *      clean up each instance created by nvpipe_create_instance();
  */
-void nvpipe_destroy_instance( nvpipe *codec );
+NVPipeErrorID nvpipe_destroy_instance( nvpipe* const __restrict codec );
 
 /*! \brief encode/compress images
  *
@@ -105,25 +112,22 @@ void nvpipe_destroy_instance( nvpipe *codec );
  *      User should provide pointer to both input and output buffer
  * 
  *      return 0 on success, otherwise, return < 0;
- *          error message:
- *              Not enough space, required space will be written to 
- *              output_buffer_size
  * 
  *      Upon success, packet data will be copied to output_buffer.
  *      The packet data size will be written to output_buffer_size.
  */
 NVPipeErrorID nvpipe_encode(  
                     // [in] handler to nvpipe instance
-                    nvpipe *codec, 
+                    nvpipe* const __restrict codec, 
                     // [in] pointer to picture buffer
-                    void * const restrict input_buffer,
+                    void* const __restrict input_buffer,
                     // [in] picture buffer size
                     const size_t input_buffer_size,
                     // [in] pointer to output packet buffer
-                    void * const restrict output_buffer,
+                    void* const __restrict output_buffer,
                     // [in] available packet buffer
                     // [out] packet data size
-                    size_t* const restrict output_buffer_size,
+                    size_t* const __restrict output_buffer_size,
                     // [in] picture width/height (in pixels)
                     const int width,                    
                     const int height,
@@ -144,19 +148,19 @@ NVPipeErrorID nvpipe_encode(
  */
 NVPipeErrorID nvpipe_decode(  
                     // [in] handler to nvpipe instance
-                    nvpipe *codec, 
+                    nvpipe* const __restrict codec, 
                     // [in] pointer to packet buffer
-                    void * const restrict input_buffer,
+                    void* const __restrict input_buffer,
                     // [in] packet data size
                     const size_t input_buffer_size,
                     // [in] pointer to output picture buffer
-                    void * const restrict output_buffer,
+                    void* const __restrict output_buffer,
                     // [in] available output buffer size
                     size_t output_buffer_size,
                     // [in] expected picture width/height (in pixels)
                     // [out] retrived picture width/height (in pixels)
-                    int * restrict width,
-                    int * restrict height,
+                    int* const __restrict width,
+                    int* const __restrict height,
                     // [in] pixel format
                     enum NVPipeImageFormat format
                     );
@@ -165,9 +169,10 @@ NVPipeErrorID nvpipe_decode(
  *
  *  return error string from error_code.
  */
-const char * nvpipe_check_error( NVPipeErrorID error_code );
+const char* nvpipe_check_error( NVPipeErrorID error_code );
 
 #ifdef __cplusplus
 }
 #endif
 
+#endif //NVPIPE_H_
