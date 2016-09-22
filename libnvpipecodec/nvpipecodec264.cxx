@@ -507,12 +507,8 @@ NVPipeErrorID NvPipeCodec264::configureEncoderContext() {
      * setup codecContext
      * Default low latency setup for nvenc
      */
-    // put bit_rate
     if ( !bitrate_overwrite_flag_ ) {
-        bitrate_ = width_;
-        bitrate_ *= height_;
-        bitrate_ *= framerate_;
-        bitrate_ *= 0.07;
+        bitrate_ = width_*height_*framerate_*4.0*0.07;
     }
     encoder_context_->bit_rate = bitrate_;
     // frames per second
