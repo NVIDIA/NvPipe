@@ -332,9 +332,7 @@ nvtxRangePushA("decodingFfmpegAPISession");
 
     int ret = avcodec_receive_frame( decoder_context_,
                                     decoder_frame_);
-    // debug information (remove before release)
     if ( ret < 0 ){
-        printf("\nreceive_frame went wrong! %d\n", ret);
         switch(ret) {
             case AVERROR(EAGAIN):
                 result = static_cast<NVPipeErrorID>(

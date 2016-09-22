@@ -105,6 +105,8 @@ endif(PKG_CONFIG_FOUND)
 # extra lib needed for benchmark
 target_link_libraries(${NVPIPE} "-lnvToolsExt")
 
+add_subdirectory(doc/example)
+
 install(FILES nvpipe.h DESTINATION include)
 install(TARGETS ${NVPIPE} DESTINATION lib)
 install(FILES "${project_config}" DESTINATION lib/cmake/${NVPIPE})
