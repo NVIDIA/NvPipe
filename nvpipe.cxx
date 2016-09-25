@@ -20,56 +20,50 @@
 #include <cuda_profiler_api.h>
 #include <nvToolsExt.h>
 
-NVPipeErrorID nvpipe_create_instance( enum NVPipeCodecID id,
-                                      nvpipe** const codec,
-                                      uint64_t bitrate)
+nvpipe* nvpipe_create_instance(enum NVPipeCodecID id,
+                               uint64_t bitrate)
 {
-    NVPipeErrorID result = static_cast<NVPipeErrorID>(NVPIPE_SUCCESS);
-
+    nvpipe* rv = (nvpipe*)calloc(sizeof(nvpipe), 1);
     switch(id) {
     case NVPIPE_CODEC_ID_NULL:
-        *codec = (nvpipe*) calloc( sizeof(nvpipe), 1 );
-        (*codec)->type_ = id;
-        (*codec)->codec_ptr_ = NULL;
+        rv->type_ = id;
+        rv->codec_ptr_ = NULL;
         break;
     case NVPIPE_CODEC_ID_H264_HARDWARE:
         {
         int64_t api_bitrate = static_cast<int64_t>(bitrate);
         if (api_bitrate < 0) {
-            (*codec) = NULL;
-            return static_cast<NVPipeErrorID>(
-                   NVPIPE_ERR_INVALID_BITRATE);
+            free(rv);
+            return NULL;
         }
-        (*codec) = (nvpipe*) calloc( sizeof(nvpipe), 1 );
-        (*codec)->type_ = NVPIPE_CODEC_ID_H264_HARDWARE;
+        rv->type_ = NVPIPE_CODEC_ID_H264_HARDWARE;
         NvPipeCodec264* ptr = new NvPipeCodec264();
         ptr->setBitrate(bitrate);
         ptr->setCodecImplementation(NV_CODEC);
-        (*codec)->codec_ptr_ = ptr;
+        rv->codec_ptr_ = ptr;
         break;
         }
     case NVPIPE_CODEC_ID_H264_SOFTWARE:
         {
         int64_t api_bitrate = static_cast<int64_t>(bitrate);
         if (api_bitrate < 0) {
-            (*codec) = NULL;
-            return static_cast<NVPipeErrorID>(
-                   NVPIPE_ERR_INVALID_BITRATE);
+            free(rv);
+            return NULL;
         }
-        (*codec) = (nvpipe*) calloc( sizeof(nvpipe), 1 );
-        (*codec)->type_ = NVPIPE_CODEC_ID_H264_SOFTWARE;
+        rv->type_ = NVPIPE_CODEC_ID_H264_SOFTWARE;
         NvPipeCodec264* ptr = new NvPipeCodec264();
         ptr->setBitrate(bitrate);
         ptr->setCodecImplementation(FFMPEG_LIBX);
-        (*codec)->codec_ptr_ = ptr;
+        rv->codec_ptr_ = ptr;
         break;
         }
     default:
-        (*codec) = NULL;
+        free(rv);
+        rv = NULL;
         break;
     }
 
-    return result;
+    return rv;
 }
 
 NVPipeErrorID nvpipe_destroy_instance( nvpipe * const __restrict codec)

@@ -92,13 +92,12 @@ typedef unsigned int NVPipeErrorID;
  *  source:
  *      http://www.adobe.com/content/dam/Adobe/en/devnet/
  */
-NVPipeErrorID nvpipe_create_instance( 
-                                      // [in] specify codec type
-                                      enum NVPipeCodecID id,
-                                      // [output] pointer to codec
-                                      nvpipe** const __restrict codec,
-                                      // [in] average bitrate
-                                      uint64_t bitrate );
+nvpipe* nvpipe_create_instance(
+	// [in] specify codec type
+	enum NVPipeCodecID id,
+	// [in] average bitrate
+	uint64_t bitrate
+);
 
 /*! \brief free nvpipe instance
  *
@@ -146,7 +145,7 @@ NVPipeErrorID nvpipe_encode(
  *      Upon success, picture will be copied to output_buffer.
  *      Retrieved image resolution will be set to width/height.
  */
-NVPipeErrorID nvpipe_decode(  
+NVPipeErrorID nvpipe_decode(
                     // [in] handler to nvpipe instance
                     nvpipe* const __restrict codec, 
                     // [in] pointer to packet buffer

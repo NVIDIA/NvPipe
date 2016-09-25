@@ -89,10 +89,8 @@ void SaveBufferBit(uint8_t *data, int length, char *str) {
 
 int main( int argc, char* argv[] ) {
 
-    nvpipe* codec_1 = NULL;
-    nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE, &codec_1, 0);
-    nvpipe* codec_2 = NULL;
-    nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE, &codec_2, 0);
+    nvpipe* codec_1 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE, 0);
+    nvpipe* codec_2 = nvpipe_create_instance(NVPIPE_CODEC_ID_H264_HARDWARE, 0);
 
     
   //  int width = 1920;
