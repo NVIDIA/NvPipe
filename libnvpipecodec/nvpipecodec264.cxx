@@ -272,7 +272,6 @@ NVPipeErrorID NvPipeCodec264::decode( void* output_picture,
 
     // Check if decoder codec has been initialized
     if (decoder_codec_ == NULL) {
-
         decoder_codec_ = 
             avcodec_find_decoder_by_name(getDecoderName().c_str());
         if (decoder_codec_ == NULL) {
@@ -330,7 +329,7 @@ nvtxRangePushA("decodingFfmpegAPISession");
                NVPIPE_ERR_FFMPEG_SEND_PACKET);
     }
 
-    int ret = avcodec_receive_frame( decoder_context_,
+    int ret = avcodec_receive_frame(decoder_context_,
                                     decoder_frame_);
     if ( ret < 0 ){
         switch(ret) {
@@ -441,7 +440,6 @@ nvtxRangePop();
         return result;
     }
     }
-
 }
 
 NVPipeErrorID NvPipeCodec264::getFormatConversionEnum(

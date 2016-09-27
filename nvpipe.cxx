@@ -96,7 +96,7 @@ NVPipeErrorID nvpipe_destroy_instance( nvpipe * const __restrict codec)
 
 
 
-NVPipeErrorID nvpipe_encode(nvpipe* const __restrict codec, 
+NVPipeErrorID nvpipe_encode(nvpipe* const __restrict codec,
                             void* const __restrict input_buffer,
                             const size_t input_buffer_size,
                             void* const __restrict output_buffer,
@@ -167,11 +167,11 @@ NVPipeErrorID nvpipe_decode(  nvpipe* const __restrict codec,
 
     codec_ptr->setImageSize(*width, *height);
     codec_ptr->setInputPacketBuffer(input_buffer, input_buffer_size);
-    result = codec_ptr->decode(  output_buffer,
-                                 *width,
-                                 *height,
-                                 output_buffer_size,
-                                 format);
+    result = codec_ptr->decode(output_buffer,
+                               *width,
+                               *height,
+                               output_buffer_size,
+                               format);
     // profiling
     nvtxRangePop();
     cudaProfilerStop();
