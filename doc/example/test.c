@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include "nvpipe.h"
-#include "libnvpipeutil/format.h"
+#include "util/format.h"
 
 void SaveBufferRGBA(uint8_t *data, int width, int height, char *str) {
   FILE *pFile;

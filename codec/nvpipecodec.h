@@ -11,7 +11,7 @@
  */
 #ifndef NVPIPE_CODEC_H_
 #define NVPIPE_CODEC_H_
-#include "libnvpipeutil/format.h"
+#include "util/format.h"
 #include <cstdlib>
 
 

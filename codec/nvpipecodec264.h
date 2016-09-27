@@ -25,8 +25,8 @@ extern "C"
 }
 #endif
 
-#include "libnvpipecodec/nvpipecodec.h"
-#include "libnvpipeutil/formatConversionCuda.h"
+#include "codec/nvpipecodec.h"
+#include "util/formatConversionCuda.h"
 #include <string>
 
 /*! \brief H.264 Encoder/Decoder

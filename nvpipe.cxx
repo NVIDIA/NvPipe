@@ -11,10 +11,10 @@
  */
 #include <cmath>
 #include "nvpipe.h"
-#include "libnvpipecodec/nvpipecodec.h"
-#include "libnvpipecodec/nvpipecodec264.h"
-#include "libnvpipeutil/formatConversionCuda.h"
-#include "libnvpipeutil/nvpipeError.h"
+#include "codec/nvpipecodec.h"
+#include "codec/nvpipecodec264.h"
+#include "util/formatConversionCuda.h"
+#include "util/nvpipeError.h"
 
 // profiling
 #include <cuda_profiler_api.h>

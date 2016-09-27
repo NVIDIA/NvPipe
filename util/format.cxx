@@ -11,8 +11,8 @@
  */
 #include <cmath>
 
-#include "libnvpipeutil/format.h"
-#include "libnvpipeutil/formatConversionCuda.h"
+#include "util/format.h"
+#include "util/formatConversionCuda.h"
 
 /***************************************************************
  *  format conversion

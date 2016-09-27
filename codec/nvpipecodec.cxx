@@ -9,7 +9,7 @@
  * NVIDIA CORPORATION is strictly prohibited.
  *
  */
-#include "libnvpipecodec/nvpipecodec.h"
+#include "codec/nvpipecodec.h"
 #include <limits>
 
 NvPipeCodec::NvPipeCodec() {

@@ -9,8 +9,8 @@
  * NVIDIA CORPORATION is strictly prohibited.
  *
  */
-#include "libnvpipecodec/nvpipecodec264.h"
-#include "libnvpipeutil/nvpipeError.h"
+#include "codec/nvpipecodec264.h"
+#include "util/nvpipeError.h"
 #include <cstdio>
 #include <limits>
 #include <cmath>

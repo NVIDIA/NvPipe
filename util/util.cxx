@@ -9,7 +9,7 @@
  * NVIDIA CORPORATION is strictly prohibited.
 
  */
-#include "libnvpipeutil/nvpipeError.h"
+#include "util/nvpipeError.h"
 #include "nvpipe.h"
 
 static const struct {
