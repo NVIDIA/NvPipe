@@ -23,7 +23,7 @@
  Requires FFmpeg library built with NVENC / CUVID / CUDA / libx264 
 
     [
-        cmake /PATH_TO_CORE
+        cmake
         make
         make install
     ]
