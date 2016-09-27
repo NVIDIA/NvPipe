@@ -37,7 +37,7 @@ NvPipeCodec::~NvPipeCodec() {
 
 }
 
-void NvPipeCodec::setImageSize(int width, int height) {
+void NvPipeCodec::setImageSize(size_t width, size_t height) {
     width_ = width;
     height_ = height;
 }

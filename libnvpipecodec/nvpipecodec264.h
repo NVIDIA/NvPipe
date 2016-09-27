@@ -45,12 +45,12 @@ public:
                         enum NVPipeImageFormat format);
 
     virtual NVPipeErrorID decode( void* picture, 
-                        int &width, 
-                        int &height, 
+                        size_t& width,
+                        size_t& height,
                         size_t &size,
                         enum NVPipeImageFormat format);
 
-    virtual void setImageSize( int width, int height);
+    virtual void setImageSize(size_t width, size_t height);
 
     virtual void setBitrate( int64_t bitrate );
 

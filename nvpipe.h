@@ -157,9 +157,9 @@ NVPipeErrorID nvpipe_decode(
                     // [in] available output buffer size
                     size_t output_buffer_size,
                     // [in] expected picture width/height (in pixels)
-                    // [out] retrived picture width/height (in pixels)
-                    int* const __restrict width,
-                    int* const __restrict height,
+                    // [out] actual picture width/height (in pixels)
+                    size_t* const __restrict width,
+                    size_t* const __restrict height,
                     // [in] pixel format
                     enum NVPipeImageFormat format
                     );

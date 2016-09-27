@@ -135,14 +135,15 @@ NVPipeErrorID nvpipe_encode(nvpipe* const __restrict codec,
 
 }
 
-NVPipeErrorID nvpipe_decode(  nvpipe* const __restrict codec, 
-                              void* const __restrict input_buffer,
-                              size_t input_buffer_size,
-                              void* const __restrict output_buffer,
-                              size_t output_buffer_size,
-                              int * const __restrict width,
-                              int * const __restrict height,
-                              enum NVPipeImageFormat format){
+NVPipeErrorID
+nvpipe_decode(nvpipe* const __restrict codec,
+              void* const __restrict input_buffer,
+              size_t input_buffer_size,
+              void* const __restrict output_buffer,
+              size_t output_buffer_size,
+              size_t* const __restrict width,
+              size_t* const __restrict height,
+              enum NVPipeImageFormat format) {
     NVPipeErrorID result = static_cast<NVPipeErrorID>(NVPIPE_SUCCESS);
     
     if (((*width|*height)&1) != 0)

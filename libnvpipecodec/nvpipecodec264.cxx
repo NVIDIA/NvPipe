@@ -62,7 +62,7 @@ NvPipeCodec264::~NvPipeCodec264() {
     destroyMemGPU(&mem_gpu_);
 }
 
-void NvPipeCodec264::setImageSize( int width, int height) {
+void NvPipeCodec264::setImageSize(size_t width, size_t height) {
     if ( width != width_ || height != height_ ) {
         encoder_config_dirty_ = true;
         decoder_config_dirty_ = true;
@@ -260,12 +260,12 @@ nvtxRangePop();
     return result;
 }
 
-NVPipeErrorID NvPipeCodec264::decode( void* output_picture, 
-                                      int &width, 
-                                      int &height, 
-                                      size_t &output_size,
-                                      enum NVPipeImageFormat format ) {
-
+NVPipeErrorID
+NvPipeCodec264::decode(void* output_picture,
+                       size_t &width,
+                       size_t &height,
+                       size_t &output_size,
+                       enum NVPipeImageFormat format) {
     NVPipeErrorID result = static_cast<NVPipeErrorID>(NVPIPE_SUCCESS);
 
     enum AVPixelFormat pixel_format;

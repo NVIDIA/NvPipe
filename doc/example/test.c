@@ -95,8 +95,8 @@ int main( int argc, char* argv[] ) {
     
   //  int width = 1920;
    // int height = 1080;
-    int width = 400;
-    int height = 400;
+    size_t width = 400;
+    size_t height = 400;
 
     size_t buffer_size = sizeof(uint8_t)*width*height*4;
     void* img_buffer = malloc(buffer_size);
