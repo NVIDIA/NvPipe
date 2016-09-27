@@ -14,7 +14,6 @@
 #include "codec/nvpipecodec.h"
 #include "codec/nvpipecodec264.h"
 #include "util/formatConversionCuda.h"
-#include "util/nvpipeError.h"
 
 // profiling
 #include <cuda_profiler_api.h>
@@ -66,12 +65,12 @@ nvpipe* nvpipe_create_instance(enum NVPipeCodecID id,
     return rv;
 }
 
-NVPipeErrorID nvpipe_destroy_instance( nvpipe * const __restrict codec)
+nvp_err_t nvpipe_destroy_instance( nvpipe * const __restrict codec)
 {
-    NVPipeErrorID result = static_cast<NVPipeErrorID>(NVPIPE_SUCCESS);
+    nvp_err_t result = static_cast<nvp_err_t>(NVPIPE_SUCCESS);
 
     if (codec == NULL)
-        return static_cast<NVPipeErrorID>(
+        return static_cast<nvp_err_t>(
                NVPIPE_ERR_INVALID_NVPIPE_INSTANCE);
     
     switch(codec->type_) {
@@ -96,7 +95,7 @@ NVPipeErrorID nvpipe_destroy_instance( nvpipe * const __restrict codec)
 
 
 
-NVPipeErrorID nvpipe_encode(nvpipe* const __restrict codec,
+nvp_err_t nvpipe_encode(nvpipe* const __restrict codec,
                             void* const __restrict input_buffer,
                             const size_t input_buffer_size,
                             void* const __restrict output_buffer,
@@ -104,14 +103,14 @@ NVPipeErrorID nvpipe_encode(nvpipe* const __restrict codec,
                             const int width,
                             const int height,
                             enum NVPipeImageFormat format) {
-    NVPipeErrorID result = static_cast<NVPipeErrorID>(NVPIPE_SUCCESS);
+    nvp_err_t result = static_cast<nvp_err_t>(NVPIPE_SUCCESS);
 
     if (((width|height)&1) != 0)
-        return static_cast<NVPipeErrorID>(
+        return static_cast<nvp_err_t>(
                NVPIPE_ERR_INVALID_RESOLUTION);
 
     if (codec == NULL)
-        return static_cast<NVPipeErrorID>(
+        return static_cast<nvp_err_t>(
                NVPIPE_ERR_INVALID_NVPIPE_INSTANCE);
 
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
@@ -135,7 +134,7 @@ NVPipeErrorID nvpipe_encode(nvpipe* const __restrict codec,
 
 }
 
-NVPipeErrorID
+nvp_err_t
 nvpipe_decode(nvpipe* const __restrict codec,
               void* const __restrict input_buffer,
               size_t input_buffer_size,
@@ -144,18 +143,18 @@ nvpipe_decode(nvpipe* const __restrict codec,
               size_t* const __restrict width,
               size_t* const __restrict height,
               enum NVPipeImageFormat format) {
-    NVPipeErrorID result = static_cast<NVPipeErrorID>(NVPIPE_SUCCESS);
+    nvp_err_t result = static_cast<nvp_err_t>(NVPIPE_SUCCESS);
     
     if (((*width|*height)&1) != 0)
-        return static_cast<NVPipeErrorID>(
+        return static_cast<nvp_err_t>(
                NVPIPE_ERR_INVALID_RESOLUTION);
 
     if (codec == NULL)
-        return static_cast<NVPipeErrorID>(
+        return static_cast<nvp_err_t>(
                NVPIPE_ERR_INVALID_NVPIPE_INSTANCE);
 
     if ( input_buffer_size == 0 ) {
-        return static_cast<NVPipeErrorID>(
+        return static_cast<nvp_err_t>(
                NVPIPE_ERR_INPUT_BUFFER_EMPTY_MEMORY);
     }
 

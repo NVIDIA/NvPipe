@@ -45,10 +45,30 @@ enum NVPipeImageFormat {
     NVPIPE_IMAGE_FORMAT_NV12
 };
 
-/************************************************************
- *     API struct
- *
- ************************************************************/
+typedef enum nvpipe_error_codes {
+    NVPIPE_SUCCESS=0,
+    NVPIPE_ERR_INVALID_IMAGE_FORMAT,
+    NVPIPE_ERR_INVALID_CODEC_ID,
+    NVPIPE_ERR_INVALID_NVPIPE_INSTANCE,
+    NVPIPE_ERR_INVALID_RESOLUTION,
+    NVPIPE_ERR_INVALID_BITRATE,
+    NVPIPE_ERR_INPUT_BUFFER_EMPTY_MEMORY,
+    NVPIPE_ERR_OUTPUT_BUFFER_OVERFLOW,
+    NVPIPE_ERR_CUDA_ERROR,
+    NVPIPE_ERR_FFMPEG_ERROR,
+    NVPIPE_ERR_FFMPEG_CAN_NOT_FIND_ENCODER,
+    NVPIPE_ERR_FFMPEG_CAN_NOT_FIND_DECODER,
+    NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_FRAME,
+    NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_CONTEXT,
+    NVPIPE_ERR_FFMPEG_CAN_NOT_OPEN_CODEC,
+    NVPIPE_ERR_FFMPEG_CAN_NOT_BOUND_FRAME,
+    NVPIPE_ERR_FFMPEG_LATENCY_OUTPUT_NOT_READY,
+    NVPIPE_ERR_FFMPEG_SEND_FRAME,
+    NVPIPE_ERR_FFMPEG_SEND_PACKET,
+    NVPIPE_ERR_FFMPEG_RECEIVE_PACKET,
+    NVPIPE_ERR_FFMPEG_RECEIVE_FRAME,
+    NVPIPE_ERR_UNIDENTIFIED_ERROR_CODE
+} nvp_err_t;
 
 /*! \brief NvPipe struct
  *
@@ -61,12 +81,6 @@ typedef struct _nvpipe {
     enum NVPipeCodecID type_;
     void *codec_ptr_;
 } nvpipe;
-
-/*! \brief NvPipe error handler
- *
- *  error status for nvpipe function calls.
- */
-typedef unsigned int NVPipeErrorID;
 
 /************************************************************
  *     API function calls
@@ -103,7 +117,7 @@ nvpipe* nvpipe_create_instance(
  *
  *      clean up each instance created by nvpipe_create_instance();
  */
-NVPipeErrorID nvpipe_destroy_instance( nvpipe* const __restrict codec );
+nvp_err_t nvpipe_destroy_instance(nvpipe* const __restrict codec);
 
 /*! \brief encode/compress images
  *
@@ -115,7 +129,7 @@ NVPipeErrorID nvpipe_destroy_instance( nvpipe* const __restrict codec );
  *      Upon success, packet data will be copied to output_buffer.
  *      The packet data size will be written to output_buffer_size.
  */
-NVPipeErrorID nvpipe_encode(  
+nvp_err_t nvpipe_encode(
                     // [in] handler to nvpipe instance
                     nvpipe* const __restrict codec, 
                     // [in] pointer to picture buffer
@@ -145,7 +159,7 @@ NVPipeErrorID nvpipe_encode(
  *      Upon success, picture will be copied to output_buffer.
  *      Retrieved image resolution will be set to width/height.
  */
-NVPipeErrorID nvpipe_decode(
+nvp_err_t nvpipe_decode(
                     // [in] handler to nvpipe instance
                     nvpipe* const __restrict codec, 
                     // [in] pointer to packet buffer
@@ -168,7 +182,7 @@ NVPipeErrorID nvpipe_decode(
  *
  *  return error string from error_code.
  */
-const char* nvpipe_check_error( NVPipeErrorID error_code );
+const char* nvpipe_check_error(nvp_err_t error_code);
 
 #ifdef __cplusplus
 }

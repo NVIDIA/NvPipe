@@ -43,11 +43,11 @@ public:
     virtual void setInputPacketBuffer(  void* packet_buffer,
                                         size_t buffer_size);
 
-    virtual NVPipeErrorID encode( void* frame,
+    virtual nvp_err_t encode(void* frame,
                         size_t &size,
                         enum NVPipeImageFormat format)=0;
 
-    virtual NVPipeErrorID decode( void* packet,
+    virtual nvp_err_t decode(void* packet,
                         size_t &width,
                         size_t &height,
                         size_t &size,

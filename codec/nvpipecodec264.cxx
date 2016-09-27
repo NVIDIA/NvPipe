@@ -10,7 +10,6 @@
  *
  */
 #include "codec/nvpipecodec264.h"
-#include "util/nvpipeError.h"
 #include <cstdio>
 #include <limits>
 #include <cmath>
@@ -89,14 +88,14 @@ void NvPipeCodec264::setBitrate( int64_t bitrate ) {
     }
 }
 
-NVPipeErrorID NvPipeCodec264::encode( void* buffer, 
+nvp_err_t NvPipeCodec264::encode( void* buffer, 
                             size_t &output_buffer_size,
                             enum NVPipeImageFormat format) {
 
-    NVPipeErrorID result = static_cast<NVPipeErrorID>(NVPIPE_SUCCESS);
+    nvp_err_t result = static_cast<nvp_err_t>(NVPIPE_SUCCESS);
 
     if (width_ == 0 || height_ == 0 ) {
-            return static_cast<NVPipeErrorID>(
+            return static_cast<nvp_err_t>(
                    NVPIPE_ERR_INVALID_RESOLUTION);
     }
 
@@ -114,13 +113,13 @@ NVPipeErrorID NvPipeCodec264::encode( void* buffer,
         encoder_codec_ = 
             avcodec_find_encoder_by_name(getEncoderName().c_str());
         if (encoder_codec_ == NULL) {
-            return static_cast<NVPipeErrorID>(
+            return static_cast<nvp_err_t>(
                    NVPIPE_ERR_FFMPEG_CAN_NOT_FIND_ENCODER);
         }
 
         encoder_frame_ = av_frame_alloc();
         if (encoder_frame_ == NULL) {
-            return static_cast<NVPipeErrorID>(
+            return static_cast<nvp_err_t>(
                    NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_FRAME);
         }
 
@@ -188,7 +187,7 @@ NVPipeErrorID NvPipeCodec264::encode( void* buffer,
                                     width_,
                                     height_,
                                     AVFRAME_LINESIZE_ALIGNMENT ) < 0 ) {
-            return static_cast<NVPipeErrorID>(
+            return static_cast<nvp_err_t>(
                    NVPIPE_ERR_FFMPEG_CAN_NOT_BOUND_FRAME);
         }
         encoder_frame_buffer_dirty_ = false;
@@ -223,17 +222,17 @@ nvtxRangePushA("encodingFfmpegAPISession");
 
     int ret = avcodec_send_frame(encoder_context_, encoder_frame_);
     if ( ret < 0 ){
-        result = static_cast<NVPipeErrorID>(
+        result = static_cast<nvp_err_t>(
                  NVPIPE_ERR_FFMPEG_SEND_FRAME);
     }
 
     ret = avcodec_receive_packet(encoder_context_, &encoder_packet_);
     if ( ret < 0 ){
         if ( ret == AVERROR(EAGAIN) ) {
-            result = static_cast<NVPipeErrorID>(
+            result = static_cast<nvp_err_t>(
                      NVPIPE_ERR_FFMPEG_LATENCY_OUTPUT_NOT_READY);
         } else {
-            result = static_cast<NVPipeErrorID>(
+            result = static_cast<nvp_err_t>(
                      NVPIPE_ERR_FFMPEG_RECEIVE_PACKET);
         }
         av_packet_unref(&encoder_packet_);
@@ -247,7 +246,7 @@ nvtxRangePushA("encodingFfmpegAPISession");
         memcpy(buffer, encoder_packet_.data, encoder_packet_.size);
         appendDummyNAL(buffer, encoder_packet_.size);
     } else {
-        result = static_cast<NVPipeErrorID>(NVPIPE_ERR_OUTPUT_BUFFER_OVERFLOW);
+        result = static_cast<nvp_err_t>(NVPIPE_ERR_OUTPUT_BUFFER_OVERFLOW);
     }
 
     // output the packet size;
@@ -260,13 +259,13 @@ nvtxRangePop();
     return result;
 }
 
-NVPipeErrorID
+nvp_err_t
 NvPipeCodec264::decode(void* output_picture,
                        size_t &width,
                        size_t &height,
                        size_t &output_size,
                        enum NVPipeImageFormat format) {
-    NVPipeErrorID result = static_cast<NVPipeErrorID>(NVPIPE_SUCCESS);
+    nvp_err_t result = static_cast<nvp_err_t>(NVPIPE_SUCCESS);
 
     enum AVPixelFormat pixel_format;
 
@@ -275,26 +274,26 @@ NvPipeCodec264::decode(void* output_picture,
         decoder_codec_ = 
             avcodec_find_decoder_by_name(getDecoderName().c_str());
         if (decoder_codec_ == NULL) {
-            return static_cast<NVPipeErrorID>(
+            return static_cast<nvp_err_t>(
                    NVPIPE_ERR_FFMPEG_CAN_NOT_FIND_DECODER);
         }
 
         decoder_context_ = avcodec_alloc_context3(decoder_codec_);
         if (decoder_context_ == NULL) {
-            return static_cast<NVPipeErrorID>(
+            return static_cast<nvp_err_t>(
                    NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_CONTEXT);
         }
 
         decoder_frame_ = av_frame_alloc();
         if (decoder_frame_ == NULL) {
-            return static_cast<NVPipeErrorID>(
+            return static_cast<nvp_err_t>(
                    NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_FRAME);
         }
 
         decoder_context_->delay = 0;
         if (avcodec_open2(decoder_context_, 
                             decoder_codec_, NULL) < 0) {
-            return static_cast<NVPipeErrorID>(
+            return static_cast<nvp_err_t>(
                    NVPIPE_ERR_FFMPEG_CAN_NOT_OPEN_CODEC);
         }
         decoder_config_dirty_ = false;
@@ -310,7 +309,7 @@ NvPipeCodec264::decode(void* output_picture,
         avcodec_close(decoder_context_);
         if (avcodec_open2(decoder_context_, 
                             decoder_codec_, NULL) < 0) {
-            return static_cast<NVPipeErrorID>(
+            return static_cast<nvp_err_t>(
                    NVPIPE_ERR_FFMPEG_CAN_NOT_OPEN_CODEC);
         }
         decoder_config_dirty_ = false;
@@ -325,7 +324,7 @@ nvtxRangePushA("decodingFfmpegAPISession");
 
     if ( avcodec_send_packet(   decoder_context_,
                                 &decoder_packet_) != 0 ) {
-        result = static_cast<NVPipeErrorID>(
+        result = static_cast<nvp_err_t>(
                NVPIPE_ERR_FFMPEG_SEND_PACKET);
     }
 
@@ -334,11 +333,11 @@ nvtxRangePushA("decodingFfmpegAPISession");
     if ( ret < 0 ){
         switch(ret) {
             case AVERROR(EAGAIN):
-                result = static_cast<NVPipeErrorID>(
+                result = static_cast<nvp_err_t>(
                          NVPIPE_ERR_FFMPEG_LATENCY_OUTPUT_NOT_READY);
                 break;
             default:
-                result = static_cast<NVPipeErrorID>(
+                result = static_cast<nvp_err_t>(
                          NVPIPE_ERR_FFMPEG_RECEIVE_FRAME);
                 break;
         }
@@ -367,7 +366,7 @@ nvtxRangePushA("decodingFormatConversionSession");
         if (frameSize > output_size ) {
             output_size = frameSize;
             av_packet_unref(&decoder_packet_);
-            result = static_cast<NVPipeErrorID>(
+            result = static_cast<nvp_err_t>(
                      NVPIPE_ERR_OUTPUT_BUFFER_OVERFLOW);
         }
         output_size = frameSize;
@@ -389,7 +388,7 @@ nvtxRangePop();
         if (frameSize > output_size ) {
             output_size = frameSize;
             av_packet_unref(&decoder_packet_);
-            result = static_cast<NVPipeErrorID>(
+            result = static_cast<nvp_err_t>(
                      NVPIPE_ERR_OUTPUT_BUFFER_OVERFLOW);
         }
         output_size = frameSize;
@@ -418,7 +417,7 @@ nvtxRangePop();
         if (frameSize > output_size ) {
             output_size = frameSize;
             av_packet_unref(&decoder_packet_);
-            result = static_cast<NVPipeErrorID>(
+            result = static_cast<nvp_err_t>(
                      NVPIPE_ERR_OUTPUT_BUFFER_OVERFLOW);
         }
         output_size = frameSize;
@@ -442,13 +441,13 @@ nvtxRangePop();
     }
 }
 
-NVPipeErrorID NvPipeCodec264::getFormatConversionEnum(
+nvp_err_t NvPipeCodec264::getFormatConversionEnum(
             enum NVPipeImageFormat format,
             bool encoder_flag,
             enum NVPipeImageFormatConversion &conversion_flag,
             enum AVPixelFormat &pixel_format) 
 {
-    NVPipeErrorID result = static_cast<NVPipeErrorID>(NVPIPE_SUCCESS);
+    nvp_err_t result = static_cast<nvp_err_t>(NVPIPE_SUCCESS);
     switch( format ) {
     case NVPIPE_IMAGE_FORMAT_RGBA:
         pixel_format = AV_PIX_FMT_NV12;
@@ -469,7 +468,7 @@ NVPipeErrorID NvPipeCodec264::getFormatConversionEnum(
     default:
         pixel_format = AV_PIX_FMT_NV12;
         conversion_flag = NVPIPE_IMAGE_FORMAT_CONVERSION_NULL;
-        result = static_cast<NVPipeErrorID>(
+        result = static_cast<nvp_err_t>(
                  NVPIPE_ERR_INVALID_IMAGE_FORMAT);
         break;
     }
@@ -491,12 +490,12 @@ void NvPipeCodec264::appendDummyNAL(void* buffer, size_t offset) {
     pkt_ptr[9] = 0;
 }
 
-NVPipeErrorID NvPipeCodec264::configureEncoderContext() {
-    NVPipeErrorID result = static_cast<NVPipeErrorID>(NVPIPE_SUCCESS);
+nvp_err_t NvPipeCodec264::configureEncoderContext() {
+    nvp_err_t result = static_cast<nvp_err_t>(NVPIPE_SUCCESS);
 
     encoder_context_ = avcodec_alloc_context3( encoder_codec_ );
     if (encoder_context_ == NULL) {
-        return static_cast<NVPipeErrorID>(
+        return static_cast<nvp_err_t>(
                NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_CONTEXT);
     }
     /*
@@ -532,7 +531,7 @@ NVPipeErrorID NvPipeCodec264::configureEncoderContext() {
     }
     if (avcodec_open2(encoder_context_, encoder_codec_, NULL) 
         != 0) {
-        return static_cast<NVPipeErrorID>(
+        return static_cast<nvp_err_t>(
                NVPIPE_ERR_FFMPEG_CAN_NOT_OPEN_CODEC);
     }
 

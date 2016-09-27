@@ -38,13 +38,12 @@ extern "C"
  *
  */
 class NvPipeCodec264 : public NvPipeCodec {
-
 public:
-    virtual NVPipeErrorID encode( void* buffer,
+    virtual nvp_err_t encode( void* buffer,
                         size_t &size,
                         enum NVPipeImageFormat format);
 
-    virtual NVPipeErrorID decode( void* picture, 
+    virtual nvp_err_t decode( void* picture,
                         size_t& width,
                         size_t& height,
                         size_t &size,
@@ -75,7 +74,7 @@ private:
 
     nvpipeMemGPU mem_gpu_;
 
-    NVPipeErrorID getFormatConversionEnum(
+    nvp_err_t getFormatConversionEnum(
             enum NVPipeImageFormat format,
             bool encoder_flag,
             enum NVPipeImageFormatConversion &conversion_flag,
@@ -100,7 +99,6 @@ private:
     std::string getEncoderName();
     std::string getDecoderName();
 
-    NVPipeErrorID configureEncoderContext();
+    nvp_err_t configureEncoderContext();
 };
-
 #endif //NVPIPE_CODEC_264_H_
