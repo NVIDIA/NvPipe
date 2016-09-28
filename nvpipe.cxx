@@ -15,7 +15,6 @@
 #include "codec/nvp-hw.h"
 #include "util/formatConversionCuda.h"
 
-// profiling
 #include <cuda_profiler_api.h>
 #include <nvToolsExt.h>
 
@@ -116,7 +115,6 @@ nvp_err_t nvpipe_encode(nvpipe* const __restrict codec,
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
 
-    // profiling
     cudaProfilerStart();
     nvtxRangePushA("encodingSession");
 
@@ -126,7 +124,6 @@ nvp_err_t nvpipe_encode(nvpipe* const __restrict codec,
                                *output_buffer_size,
                                format);
 
-    // profiling
     nvtxRangePop();
     cudaProfilerStop();
 
@@ -161,7 +158,6 @@ nvpipe_decode(nvpipe* const __restrict codec,
     NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*> 
                                 (codec->codec_ptr_);
 
-    // profiling
     cudaProfilerStart();
     nvtxRangePushA("decodingSession");
 
@@ -172,7 +168,6 @@ nvpipe_decode(nvpipe* const __restrict codec,
                                *height,
                                output_buffer_size,
                                format);
-    // profiling
     nvtxRangePop();
     cudaProfilerStop();
 
