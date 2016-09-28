@@ -11,8 +11,8 @@
  */
 #include <cmath>
 #include "nvpipe.h"
-#include "codec/nvpipecodec.h"
-#include "codec/nvpipecodec264.h"
+#include "codec/nvp-abstract.h"
+#include "codec/nvp-hw.h"
 #include "util/formatConversionCuda.h"
 
 // profiling

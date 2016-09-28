@@ -33,8 +33,8 @@ link_directories("${CMAKE_INSTALL_PREFIX}/lib")
 
 cuda_add_library(${NVPIPE}
     ${CMAKE_SOURCE_DIR}/nvpipe.cxx
-    ${CMAKE_SOURCE_DIR}/codec/nvpipecodec.cxx
-    ${CMAKE_SOURCE_DIR}/codec/nvpipecodec264.cxx
+    ${CMAKE_SOURCE_DIR}/codec/abstract.cxx
+    ${CMAKE_SOURCE_DIR}/codec/hw.cxx
     ${CMAKE_SOURCE_DIR}/util/util.cxx
     ${CMAKE_SOURCE_DIR}/util/format.cxx
     ${CMAKE_SOURCE_DIR}/util/kernels.cu

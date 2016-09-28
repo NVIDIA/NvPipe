@@ -9,12 +9,10 @@
  * NVIDIA CORPORATION is strictly prohibited.
  *
  */
-#include "codec/nvpipecodec264.h"
+#include "codec/nvp-hw.h"
 #include <cstdio>
-#include <limits>
 #include <cmath>
-
-// profiling
+#include <libavutil/log.h>
 #include <cuda_profiler_api.h>
 #include <nvToolsExt.h>
 
@@ -193,8 +191,7 @@ nvp_err_t NvPipeCodec264::encode( void* buffer,
         encoder_frame_buffer_dirty_ = false;
     }
 
-// profiling
-nvtxRangePushA("encodingFormatConversionSession");
+    nvtxRangePushA("encodingFormatConversionSession");
 
     switch ( encoder_conversion_flag_ ) {
     case NVPIPE_IMAGE_FORMAT_CONVERSION_RGB_TO_NV12:
@@ -210,11 +207,9 @@ nvtxRangePushA("encodingFormatConversionSession");
         break;
     }
 
-// profiling
-nvtxRangePop();
+    nvtxRangePop();
 
-// profiling
-nvtxRangePushA("encodingFfmpegAPISession");
+    nvtxRangePushA("encodingFfmpegAPISession");
 
     av_init_packet(&encoder_packet_);
     encoder_packet_.data = NULL;
@@ -253,8 +248,7 @@ nvtxRangePushA("encodingFfmpegAPISession");
     output_buffer_size = encoder_packet_.size + 10;
     av_packet_unref(&encoder_packet_);
 
-// profiling
-nvtxRangePop();
+    nvtxRangePop();
 
     return result;
 }
@@ -315,8 +309,7 @@ NvPipeCodec264::decode(void* output_picture,
         decoder_config_dirty_ = false;
     }
 
-// profiling
-nvtxRangePushA("decodingFfmpegAPISession");
+    nvtxRangePushA("decodingFfmpegAPISession");
 
     av_init_packet(&decoder_packet_);
     decoder_packet_.data = (uint8_t *) packet_;
@@ -349,14 +342,12 @@ nvtxRangePushA("decodingFfmpegAPISession");
         return result;
     }
 
-// profiling
-nvtxRangePop();
+    nvtxRangePop();
 
     width = decoder_frame_->width;
     height = decoder_frame_->height;
 
-// profiling
-nvtxRangePushA("decodingFormatConversionSession");
+    nvtxRangePushA("decodingFormatConversionSession");
 
     // should really check the decoder_frame_->format
     switch ( decoder_conversion_flag_ ) {
@@ -376,8 +367,7 @@ nvtxRangePushA("decodingFormatConversionSession");
             output_picture,
             &mem_gpu_);
         av_packet_unref(&decoder_packet_);
-// profiling
-nvtxRangePop();
+        nvtxRangePop();
 
         return result;
         break;
@@ -398,8 +388,7 @@ nvtxRangePop();
             output_picture,
             &mem_gpu_);
         av_packet_unref(&decoder_packet_);
-// profiling
-nvtxRangePop();
+        nvtxRangePop();
 
         return result;
         break;

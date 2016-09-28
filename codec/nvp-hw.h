@@ -24,7 +24,7 @@ extern "C"
 }
 #endif
 
-#include "codec/nvpipecodec.h"
+#include "codec/nvp-abstract.h"
 #include "util/formatConversionCuda.h"
 #include <string>
 
