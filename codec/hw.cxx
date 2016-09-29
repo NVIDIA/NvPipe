@@ -11,6 +11,7 @@
  */
 #include "codec/nvp-hw.h"
 #include <cstdio>
+#include <cstdlib>
 #include <cmath>
 #include <libavutil/log.h>
 #include <cuda_profiler_api.h>
@@ -41,6 +42,9 @@ NvPipeCodec264::NvPipeCodec264() {
     encoder_converted_image_buffer_ = NULL;
     encoder_converted_image_buffer_size_ = 0;
 
+    if(getenv("NVPIPE_VERBOSE") != NULL) {
+        av_log_set_level(AV_LOG_TRACE);
+    }
     // register all available file formats and codecs
     // could be initialized multiple times.
     av_register_all();
