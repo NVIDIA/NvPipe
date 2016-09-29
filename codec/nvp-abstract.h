@@ -32,6 +32,9 @@ enum NvPipeCodecImplementation {
  */
 class NvPipeCodec {
 public:
+    NvPipeCodec();
+    virtual ~NvPipeCodec();
+
     virtual void setImageSize(size_t width, size_t height);
 
     virtual void setCodecImplementation(
@@ -40,8 +43,8 @@ public:
     virtual void setInputFrameBuffer(   void* frame_buffer,
                                         size_t buffer_size);
 
-    virtual void setInputPacketBuffer(  void* packet_buffer,
-                                        size_t buffer_size);
+    virtual void setInputPacketBuffer(const void* packet_buffer,
+                                      size_t buffer_size);
 
     virtual nvp_err_t encode(void* frame,
                         size_t &size,
@@ -60,16 +63,13 @@ public:
     void setFramerate( int framerate );
 
 protected:
-    NvPipeCodec();
-    virtual ~NvPipeCodec();
-
     size_t width_;
     size_t height_;
 
     void* frame_;
     size_t frame_buffer_size_;
     enum NVPipeImageFormat encoder_format_;
-    void* packet_;
+    const void* packet_;
     size_t packet_buffer_size_;
 
     enum NVPipeImageFormat decoder_format_;

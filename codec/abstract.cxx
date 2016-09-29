@@ -42,9 +42,9 @@ void NvPipeCodec::setImageSize(size_t width, size_t height) {
     height_ = height;
 }
 
-void NvPipeCodec::setInputPacketBuffer(void* packet_buffer, size_t buffer_size) {
-    packet_ = packet_buffer;
-    packet_buffer_size_ = buffer_size;
+void NvPipeCodec::setInputPacketBuffer(const void* buf, size_t bufsz) {
+    packet_ = buf;
+    packet_buffer_size_ = bufsz;
 }
 
 void NvPipeCodec::setInputFrameBuffer(void* frame_buffer, size_t buffer_size) {

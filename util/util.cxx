@@ -38,7 +38,8 @@ static const char* nvp_errors[] = {
 	"unknown error"
 };
 
-const char * nvpipe_check_error(nvp_err_t error_code) {
+const char*
+nvpipe_strerror(nvp_err_t error_code) {
 	const size_t i = static_cast<size_t>(error_code);
 	if(i >= (sizeof(nvp_errors) / sizeof(nvp_errors[0]))) {
 		return "invalid NVPipe error code!";
