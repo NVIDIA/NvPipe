@@ -14,7 +14,6 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <helper_cuda.h>
 
 #ifdef __cplusplus
 extern "C" {
