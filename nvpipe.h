@@ -122,7 +122,7 @@ nvpipe_destroy(nvpipe* const __restrict codec);
  */
 NVPIPE_VISIBLE nvp_err_t
 nvpipe_encode(nvpipe * const __restrict codec,
-              void *const __restrict ibuf,
+              const void *const __restrict ibuf,
               const size_t ibuf_sz,
               void *const __restrict obuf,
               size_t* const __restrict obuf_sz,

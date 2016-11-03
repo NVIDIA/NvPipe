@@ -40,8 +40,8 @@ public:
     virtual void setCodecImplementation(
                     enum NvPipeCodecImplementation type);
 
-    virtual void setInputFrameBuffer(   void* frame_buffer,
-                                        size_t buffer_size);
+    virtual void setInputFrameBuffer(const void* frame_buffer,
+                                     size_t buffer_size);
 
     virtual void setInputPacketBuffer(const void* packet_buffer,
                                       size_t buffer_size);
@@ -66,7 +66,7 @@ protected:
     size_t width_;
     size_t height_;
 
-    void* frame_;
+    const void* frame_;
     size_t frame_buffer_size_;
     enum NVPipeImageFormat encoder_format_;
     const void* packet_;

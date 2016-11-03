@@ -47,7 +47,7 @@ void NvPipeCodec::setInputPacketBuffer(const void* buf, size_t bufsz) {
     packet_buffer_size_ = bufsz;
 }
 
-void NvPipeCodec::setInputFrameBuffer(void* frame_buffer, size_t buffer_size) {
+void NvPipeCodec::setInputFrameBuffer(const void* frame_buffer, size_t buffer_size) {
     frame_ = frame_buffer;
     frame_buffer_size_ = buffer_size;
 }

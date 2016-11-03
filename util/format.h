@@ -61,7 +61,7 @@ void destroyMemGPU(nvpipeMemGPU *mem_gpu);
  * use reusable GPU memory struct mem_gpu2.
  */
 int formatConversionReuseMemory( int w, int h, int align,
-                        void* imagePtrSrc,
+                        const void* imagePtrSrc,
                         void* imagePtrDes,
                         enum NVPipeImageFormatConversion,
                         nvpipeMemGPU *mem_gpu);

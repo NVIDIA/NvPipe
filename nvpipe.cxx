@@ -95,7 +95,7 @@ nvpipe_destroy(nvpipe* const __restrict cdc)
 
 nvp_err_t
 nvpipe_encode(nvpipe* const __restrict cdc,
-              void* const __restrict input_buffer,
+              const void* const __restrict input_buffer,
               const size_t input_buffer_size,
               void* const __restrict output_buffer,
               size_t* const __restrict output_buffer_size,

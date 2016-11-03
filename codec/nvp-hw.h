@@ -52,8 +52,8 @@ public:
 
     virtual void setBitrate( int64_t bitrate );
 
-    virtual void setInputFrameBuffer(   void* frame_buffer, 
-                                        size_t buffer_size);
+    virtual void setInputFrameBuffer(const void* frame_buffer,
+                                     size_t buffer_size);
 
     NvPipeCodec264();
     virtual ~NvPipeCodec264();

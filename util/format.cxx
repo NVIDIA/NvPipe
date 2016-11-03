@@ -20,7 +20,7 @@
  **************************************************************/
 
 int formatConversionReuseMemory( int w, int h, int align,
-            void* source,
+            const void* source,
             void* destination,
             enum NVPipeImageFormatConversion conversionEnum,
             nvpipeMemGPU *mem_gpu) 

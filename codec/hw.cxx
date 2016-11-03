@@ -71,8 +71,8 @@ void NvPipeCodec264::setImageSize(size_t width, size_t height) {
     NvPipeCodec::setImageSize(width, height);
 }
 
-void NvPipeCodec264::setInputFrameBuffer(   void* frame_buffer, 
-                                            size_t buffer_size)
+void NvPipeCodec264::setInputFrameBuffer(const void* frame_buffer,
+                                         size_t buffer_size)
 {
     if (encoder_conversion_flag_ == NVPIPE_IMAGE_FORMAT_CONVERSION_NULL
             && frame_buffer != frame_ ) {
