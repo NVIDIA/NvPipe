@@ -24,9 +24,8 @@ extern "C"
 }
 #endif
 
-#include "codec/nvp-abstract.h"
-#include "util/formatConversionCuda.h"
 #include <string>
+#include "codec/nvp-abstract.h"
 
 /*! \brief H.264 Encoder/Decoder
  *
@@ -38,66 +37,57 @@ extern "C"
  */
 class NvPipeCodec264 : public NvPipeCodec {
 public:
-    virtual nvp_err_t encode( void* buffer,
-                        size_t &size,
-                        enum NVPipeImageFormat format);
+	virtual nvp_err_t encode(void* buffer, size_t& size, nvp_fmt_t format);
 
-    virtual nvp_err_t decode( void* picture,
-                        size_t& width,
-                        size_t& height,
-                        size_t &size,
-                        enum NVPipeImageFormat format);
+	virtual nvp_err_t decode(void* picture, size_t& width, size_t& height,
+	                         size_t& size, nvp_fmt_t format);
 
-    virtual void setImageSize(size_t width, size_t height);
+	virtual void setImageSize(size_t width, size_t height);
+	virtual void setBitrate(int64_t bitrate);
 
-    virtual void setBitrate( int64_t bitrate );
+	virtual void setInputFrameBuffer(const void* frame_buffer,
+	                                 size_t buffer_size);
 
-    virtual void setInputFrameBuffer(const void* frame_buffer,
-                                     size_t buffer_size);
-
-    NvPipeCodec264();
-    virtual ~NvPipeCodec264();
+	NvPipeCodec264();
+	virtual ~NvPipeCodec264();
 
 protected:
-    AVCodecContext *encoder_context_;
-    AVCodec *encoder_codec_;
-    AVFrame *encoder_frame_;
-    AVPacket encoder_packet_;
+	AVCodecContext *encoder_context_;
+	AVCodec *encoder_codec_;
+	AVFrame *encoder_frame_;
+	AVPacket encoder_packet_;
 
-    AVCodecContext *decoder_context_;
-    AVCodec *decoder_codec_;
-    AVFrame *decoder_frame_;
-    AVPacket decoder_packet_;
+	AVCodecContext *decoder_context_;
+	AVCodec *decoder_codec_;
+	AVFrame *decoder_frame_;
+	AVPacket decoder_packet_;
 
 private:
+	nvpipeMemGPU mem_gpu_;
 
-    nvpipeMemGPU mem_gpu_;
+	nvp_err_t getFormatConversionEnum(nvp_fmt_t format, bool encoder_flag,
+                                    enum NVPipeImageFormatConversion& convflag,
+	                                  enum AVPixelFormat& pixel_format);
 
-    nvp_err_t getFormatConversionEnum(
-            enum NVPipeImageFormat format,
-            bool encoder_flag,
-            enum NVPipeImageFormatConversion &conversion_flag,
-            enum AVPixelFormat &pixel_format);
+	// append 2 dummy access delimiter NAL units at the end.
+	void appendDummyNAL(void* buffer, size_t offset);
 
-    // append 2 dummy access delimiter NAL units at the end.
-    void appendDummyNAL(void* buffer, size_t offset);
+	bool encoder_config_dirty_;
+	bool decoder_config_dirty_;
 
-    bool encoder_config_dirty_;
-    bool decoder_config_dirty_;
+	bool encoder_frame_buffer_dirty_;
 
-    bool encoder_frame_buffer_dirty_;
+	enum NVPipeImageFormatConversion encoder_conversion_flag_;
+	void* encoder_converted_image_buffer_;
+	size_t encoder_converted_image_buffer_size_;
 
-    enum NVPipeImageFormatConversion encoder_conversion_flag_;
-    void* encoder_converted_image_buffer_;
-    size_t encoder_converted_image_buffer_size_;
+	enum NVPipeImageFormatConversion decoder_conversion_flag_;
 
-    enum NVPipeImageFormatConversion decoder_conversion_flag_;
+	enum AVPixelFormat encoder_frame_pixel_format_;
 
-    enum AVPixelFormat encoder_frame_pixel_format_;
+	std::string getEncoderName() const;
+	std::string getDecoderName() const;
 
-    std::string getEncoderName();
-    std::string getDecoderName();
-
-    nvp_err_t configureEncoderContext();
+	nvp_err_t configureEncoderContext();
 };
 #endif //NVPIPE_CODEC_264_H_

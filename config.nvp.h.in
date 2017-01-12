@@ -1,0 +1,24 @@
+/*
+ * Copyright (c) 2016 NVIDIA Corporation.  All rights reserved.
+ *
+ * NVIDIA CORPORATION and its licensors retain all intellectual
+ * property and proprietary rights in and to this software,
+ * related documentation and any modifications thereto.  Any use,
+ * reproduction, disclosure or distribution of this software and
+ * related documentation without an express license agreement from
+ * NVIDIA CORPORATION is strictly prohibited.
+ */
+#ifndef NVPIPE_CONFIG_H
+#define NVPIPE_CONFIG_H
+
+/* Was this library compiled with encode support? */
+#define NVPIPE_ENCODE @NvPipe_ENCODE@
+/* Was this library compiled with decode support? */
+#define NVPIPE_DECODE @NvPipe_DECODE@
+/* Does the library contain the ffmpeg backend? */
+#define NVPIPE_FFMPEG @NvPipe_FFMPEG@
+
+/* Where was this library installed?  We use this to find PTX files. */
+#define NVPIPE_PREFIX "@NvPipe_PREFIX@"
+
+#endif

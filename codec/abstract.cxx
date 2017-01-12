@@ -10,71 +10,74 @@
  *
  */
 #include "codec/nvp-abstract.h"
-#include <limits>
 
 NvPipeCodec::NvPipeCodec() {
-    width_ = 0;
-    height_ = 0;
-    encoder_format_ = NVPIPE_IMAGE_FORMAT_NULL;
-    decoder_format_ = NVPIPE_IMAGE_FORMAT_NULL;
+	width_ = 0;
+	height_ = 0;
+	encoder_format_ = NVPIPE_RGB;
+	decoder_format_ = NVPIPE_RGB;
 
-    frame_ = NULL;
-    frame_buffer_size_ = 0;
-    packet_ = NULL;
-    packet_buffer_size_ = 0;
+	frame_ = NULL;
+	frame_buffer_size_ = 0;
+	packet_ = NULL;
+	packet_buffer_size_ = 0;
 
-    bitrate_ = 1000000;
-    //gop_size_ = std::numeric_limits<int>::max();
-    framerate_ = 30;
-    gop_size_ = 60;
+	bitrate_ = 1000000;
+	framerate_ = 30;
+	gop_size_ = 60;
 
-    bitrate_overwrite_flag_ = false;
+	bitrate_overwrite_flag_ = false;
 
-    codec_ = NV_CODEC;
+	codec_ = NV_CODEC;
 }
 
 NvPipeCodec::~NvPipeCodec() {
-
 }
 
-void NvPipeCodec::setImageSize(size_t width, size_t height) {
-    width_ = width;
-    height_ = height;
+void
+NvPipeCodec::setImageSize(size_t width, size_t height) {
+	width_ = width;
+	height_ = height;
 }
 
-void NvPipeCodec::setInputPacketBuffer(const void* buf, size_t bufsz) {
-    packet_ = buf;
-    packet_buffer_size_ = bufsz;
+void
+NvPipeCodec::setInputPacketBuffer(const void *buf, size_t bufsz) {
+	packet_ = buf;
+	packet_buffer_size_ = bufsz;
 }
 
-void NvPipeCodec::setInputFrameBuffer(const void* frame_buffer, size_t buffer_size) {
-    frame_ = frame_buffer;
-    frame_buffer_size_ = buffer_size;
+void
+NvPipeCodec::setInputFrameBuffer(const void *frame_buffer, size_t buffer_size) {
+	frame_ = frame_buffer;
+	frame_buffer_size_ = buffer_size;
 }
 
-void NvPipeCodec::setBitrate( int64_t bitrate ) {
-    if ( bitrate != 0) {
-        bitrate_overwrite_flag_ = true;
-        bitrate_ = bitrate;
-    } else {
-        bitrate_overwrite_flag_ = false;
-    }
+void
+NvPipeCodec::setBitrate(int64_t bitrate) {
+	if(bitrate != 0) {
+		bitrate_overwrite_flag_ = true;
+		bitrate_ = bitrate;
+	} else {
+		bitrate_overwrite_flag_ = false;
+	}
 }
 
-void NvPipeCodec::setGopSize( int gop_size ) {
-    gop_size_ = gop_size;
+void
+NvPipeCodec::setGopSize(int gop_size) {
+	gop_size_ = gop_size;
 }
 
-void NvPipeCodec::setFramerate( int framerate ) {
-    framerate_ = framerate;
+void
+NvPipeCodec::setFramerate(int framerate) {
+	framerate_ = framerate;
 }
 
-enum NvPipeCodecImplementation NvPipeCodec::getCodec() {
-    return codec_;
+enum NvPipeCodecImplementation
+NvPipeCodec::getCodec() const {
+	return codec_;
 }
 
-void NvPipeCodec::setCodecImplementation(
-            enum NvPipeCodecImplementation type) {
-    codec_ = type;
+void
+NvPipeCodec::setCodecImplementation(enum NvPipeCodecImplementation type) {
+	codec_ = type;
 }
-

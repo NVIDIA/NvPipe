@@ -14,7 +14,6 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-
 __forceinline__  __device__ float clamp(float x, float a, float b)
 {
   return max(a, min(b, x));
@@ -291,7 +290,6 @@ __global__ static void CudaProcessAVFrameNV122RGBA(int w, int h, int linesize, u
                                 , 0, 255);
     } else if ( channel == 4) {
         //pRGBAImage[w*j+i].w = 255;
-        // Tom's hack, blame him
         pRGBAImage[w*j+i].w = 0;
     }
   }
@@ -334,7 +332,6 @@ __global__ static void CudaProcessYUV420P2RGBA(int w, int h, int linesize, unsig
 
 extern "C" 
 {
-
   cudaError launch_CudaRGB2NV12Process(int w, int h, int align, CUdeviceptr pRGBImage, CUdeviceptr pNV12Image )
   {
     int linesize = std::ceil(((float) w)/align) * align;
@@ -429,7 +426,4 @@ extern "C"
     cudaError err = cudaGetLastError();                                
     return err;
   }
-
-
-
 }

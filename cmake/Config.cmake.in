@@ -6,58 +6,59 @@
 # reproduction, disclosure or distribution of this software and
 # related documentation without an express license agreement from
 # NVIDIA CORPORATION is strictly prohibited.
-add_library(nvpipe STATIC IMPORTED)
+add_library(nvpipe SHARED IMPORTED)
 
 find_library(NVPIPE_LIBRARY_PATH nvpipe HINTS "@CMAKE_INSTALL_PREFIX@/lib")
 
 set(NVPIPE_LIBRARIES nvpipe)
 set(NVPIPE_INCLUDE_DIRS "@CMAKE_INSTALL_PREFIX@/include")
+set(NVPIPE_USE_FFMPEG @NvPipe_FFMPEG@)
 
 find_package(CUDA)
-  set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${CUDA_LIBRARIES})
+set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${CUDA_LIBRARIES})
 
-find_package(PkgConfig)
-if (PKG_CONFIG_FOUND)
-  pkg_check_modules(AVDEVICE "libavdevice")
-  if (AVDEVICE_FOUND)    
-    set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVDEVICE_LIBRARIES})
-  endif(AVDEVICE_FOUND)
+if(NVPIPE_USE_FFMPEG)
+  find_package(PkgConfig)
+  if (PKG_CONFIG_FOUND)
+    pkg_check_modules(AVDEVICE "libavdevice")
+    if (AVDEVICE_FOUND)
+      set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVDEVICE_LIBRARIES})
+    endif(AVDEVICE_FOUND)
 
-  pkg_check_modules(AVFILTER "libavfilter")
-  if (AVFILTER_FOUND)    
-    set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVFILTER_LIBRARIES})
-  endif(AVFILTER_FOUND)
+    pkg_check_modules(AVFILTER "libavfilter")
+    if (AVFILTER_FOUND)
+      set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVFILTER_LIBRARIES})
+    endif(AVFILTER_FOUND)
 
-  pkg_check_modules(AVFORMAT "libavformat")
-  if (AVFORMAT_FOUND)    
-    set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVFORMAT_LIBRARIES})
-  endif(AVFORMAT_FOUND)
+    pkg_check_modules(AVFORMAT "libavformat")
+    if (AVFORMAT_FOUND)
+      set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVFORMAT_LIBRARIES})
+    endif(AVFORMAT_FOUND)
 
-  pkg_check_modules(AVCODEC "libavcodec")
-  if (AVCODEC_FOUND)    
-    set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVCODEC_LIBRARIES})
-  endif(AVCODEC_FOUND)
+    pkg_check_modules(AVCODEC "libavcodec")
+    if (AVCODEC_FOUND)
+      set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVCODEC_LIBRARIES})
+    endif(AVCODEC_FOUND)
 
-  pkg_check_modules(AVSWRESAMPLE "libswresample")
-  if (AVSWRESAMPLE_FOUND)    
-    set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVSWRESAMPLE_LIBRARIES})
-  endif(AVSWRESAMPLE_FOUND)
+    pkg_check_modules(AVSWRESAMPLE "libswresample")
+    if (AVSWRESAMPLE_FOUND)
+      set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVSWRESAMPLE_LIBRARIES})
+    endif(AVSWRESAMPLE_FOUND)
 
-  pkg_check_modules(AVSWSCALE "libswscale")
-  if (AVSWSCALE_FOUND)    
-    set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVSWSCALE_LIBRARIES})
-  endif(AVSWSCALE_FOUND)
+    pkg_check_modules(AVSWSCALE "libswscale")
+    if (AVSWSCALE_FOUND)
+      set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVSWSCALE_LIBRARIES})
+    endif(AVSWSCALE_FOUND)
 
-  pkg_check_modules(AVUTIL "libavutil")
-  if (AVUTIL_FOUND)    
-    set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVUTIL_LIBRARIES})
-  endif(AVUTIL_FOUND)
-
-endif(PKG_CONFIG_FOUND)
+    pkg_check_modules(AVUTIL "libavutil")
+    if (AVUTIL_FOUND)
+      set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${AVUTIL_LIBRARIES})
+    endif(AVUTIL_FOUND)
+  endif(PKG_CONFIG_FOUND)
+endif(NVPIPE_USE_FFMPEG)
 
 find_library(CUDA_NVTX_LIB libnvToolsExt.so HINTS "@CUDA_TOOLKIT_ROOT_DIR@" PATH_SUFFIXES lib lib64)
 
 set(NVPIPE_LIBRARIES ${NVPIPE_LIBRARIES} ${CUDA_NVTX_LIB})
 
-# some extra lib needed
 set_target_properties(nvpipe PROPERTIES IMPORTED_LOCATION "${NVPIPE_LIBRARY_PATH}")

@@ -7,7 +7,6 @@
  * reproduction, disclosure or distribution of this software and
  * related documentation without an express license agreement from
  * NVIDIA CORPORATION is strictly prohibited.
- *
  */
 #ifndef NVPIPE_H_
 #define NVPIPE_H_
@@ -19,44 +18,40 @@ extern "C" {
 #endif
 
 /** Codecs usable for the encoding/decoding session */
-enum NVPipeCodecID {
-	NVPIPE_CODEC_ID_NULL,
-	NVPIPE_CODEC_ID_H264_HARDWARE,
-	NVPIPE_CODEC_ID_H264_SOFTWARE
-};
+typedef enum nvpipe_codec {
+	NVPIPE_H264_NV, /**< NVIDIA video codec SDK backend */
+	NVPIPE_H264_NVFFMPEG, /**< NVIDIA-based ffmpeg backend */
+	NVPIPE_H264_FFMPEG, /**< CPU-based ffmpeg backend */
+} nvp_codec_t;
 
 /** Supported NvPipe image formats. */
-enum NVPipeImageFormat {
-	NVPIPE_IMAGE_FORMAT_NULL,
-	NVPIPE_IMAGE_FORMAT_RGB,
-	NVPIPE_IMAGE_FORMAT_RGBA,
-	NVPIPE_IMAGE_FORMAT_NV12
-};
+typedef enum nvpipe_format {
+	NVPIPE_RGB,
+	NVPIPE_RGBA,
+} nvp_fmt_t;
 
-/** Error codes that library calls can return.  See nvpipe_strerror. */
-typedef enum nvpipe_error_codes {
-	NVPIPE_SUCCESS = 0,
-	NVPIPE_ERR_INVALID_IMAGE_FORMAT,
-	NVPIPE_ERR_INVALID_CODEC_ID,
-	NVPIPE_ERR_INVALID_NVPIPE_INSTANCE,
-	NVPIPE_ERR_INVALID_RESOLUTION,
-	NVPIPE_ERR_INVALID_BITRATE,	/* 5 */
-	NVPIPE_ERR_INPUT_BUFFER_EMPTY_MEMORY,
-	NVPIPE_ERR_OUTPUT_BUFFER_OVERFLOW,
-	NVPIPE_ERR_CUDA_ERROR,
-	NVPIPE_ERR_FFMPEG_ERROR,
-	NVPIPE_ERR_FFMPEG_CAN_NOT_FIND_ENCODER,	/* 10 */
-	NVPIPE_ERR_FFMPEG_CAN_NOT_FIND_DECODER,
-	NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_FRAME,
-	NVPIPE_ERR_FFMPEG_CAN_NOT_ALLOCATE_CONTEXT,
-	NVPIPE_ERR_FFMPEG_CAN_NOT_OPEN_CODEC,
-	NVPIPE_ERR_FFMPEG_CAN_NOT_BOUND_FRAME,
-	NVPIPE_ERR_FFMPEG_LATENCY_OUTPUT_NOT_READY,
-	NVPIPE_ERR_FFMPEG_SEND_FRAME,
-	NVPIPE_ERR_FFMPEG_SEND_PACKET,
-	NVPIPE_ERR_FFMPEG_RECEIVE_PACKET,
-	NVPIPE_ERR_FFMPEG_RECEIVE_FRAME,
-	NVPIPE_ERR_UNIDENTIFIED_ERROR_CODE
+/* Avoid a dependency on cuda.h by copying these definitions here. */
+#define cuda_SUCCESS 0
+#define cuda_ERROR_INVALID_VALUE 1
+#define cuda_ERROR_OUT_OF_MEMORY 2
+#define cuda_ERROR_MAP_FAILED 205
+#define cuda_ERROR_UNMAP_FAILED 206
+#define cuda_ERROR_FILE_NOT_FOUND 301
+#define cuda_ERROR_UNKNOWN 999
+
+/** NvPipe error codes are a superset of the CUDA error codes.  See
+ * nvpipe_strerror. */
+typedef enum nvpipe_error_code {
+	NVPIPE_SUCCESS = cuda_SUCCESS,
+	NVPIPE_EINVAL = cuda_ERROR_INVALID_VALUE,
+	NVPIPE_ENOMEM = cuda_ERROR_OUT_OF_MEMORY,
+	NVPIPE_EMAP = cuda_ERROR_MAP_FAILED,
+	NVPIPE_EUNMAP = cuda_ERROR_UNMAP_FAILED,
+	NVPIPE_ENOENT = cuda_ERROR_FILE_NOT_FOUND,
+	NVPIPE_EENCODE = cuda_ERROR_UNKNOWN+1,
+	NVPIPE_EDECODE = cuda_ERROR_UNKNOWN+2,
+	NVPIPE_EOVERFLOW = cuda_ERROR_UNKNOWN+3,
+	NVPIPE_EAGAIN = cuda_ERROR_UNKNOWN+4,
 } nvp_err_t;
 
 typedef void nvpipe;
@@ -69,34 +64,34 @@ typedef void nvpipe;
 
 /** @fn create nvpipe instance
  *
- *  return 0 on success, otherwise, return < 0;
- *  used to initiate context for nvpipe_encode / nvpipe_decode
- *  API call
- *  @param[in] id codec type, HW or software.
- *  @param[in] bitrate rate to use; 0 specifies intelligent default based on
- *             Kush gauge.
+ * return a valid instance on success, NULL otherwise.
+ * @param[in] backend implementation to use.
+ * @param[in] bitrate rate to use
  *
- *  bitrate = 0 to use default bitrate calculated using Kush Gauge
- *    motion rank = 4
- *    framerate = 30
- *
- *  Kush Gauge for bitrate calculation (default motion rank = 4):
+ * If you're unsure what to use for a bitrate, we suggest the Kush gauge:
  *  [image width] x [image height] x [framerate] x [motion rank] x 0.07
  *      [motion rank]:  1 being low motion;
  *                      2 being medium motion;
  *                      4 being high motion;
- *  source:
+ *  See also:
  *      http://www.adobe.com/content/dam/Adobe/en/devnet/
  */
 NVPIPE_VISIBLE nvpipe*
-nvpipe_create(enum NVPipeCodecID id, uint64_t bitrate);
+nvpipe_create_encoder(nvp_codec_t id, uint64_t bitrate);
 
+/** @fn create nvpipe decoding instance
+ *
+ * return a valid instance on success, NULL otherwise.
+ * @param[in] backend implementation to use.
+ */
+NVPIPE_VISIBLE nvpipe*
+nvpipe_create_decoder(nvp_codec_t id);
 
 /** \brief free nvpipe instance
  *
  * clean up each instance created by nvpipe_create_instance();
  */
-NVPIPE_VISIBLE nvp_err_t
+NVPIPE_VISIBLE void
 nvpipe_destroy(nvpipe* const __restrict codec);
 
 /** encode/compress images
@@ -126,21 +121,29 @@ nvpipe_encode(nvpipe * const __restrict codec,
               const size_t ibuf_sz,
               void *const __restrict obuf,
               size_t* const __restrict obuf_sz,
-              const int width, const int height,
-              enum NVPipeImageFormat format);
+              const size_t width, const size_t height,
+              nvp_fmt_t format);
 
-/** decode/decompress packets
+/** Change the bitrate used for an encoder.  The setting takes effect for
+ * subsequent frames.
  *
- * Decode a frame into the given buffer.
+ * The bitrate determines the quality of the encoded image.  NvPipe will
+ * automatically adjust to new image sizes, but it will not update the bitrate
+ * it utilizes without (this) explicit request.
+ *
+ * Note this only makes sense for encoders; decoders accept streams encoded at
+ * any bitrate. */
+NVPIPE_VISIBLE
+nvp_err_t nvpipe_bitrate(nvpipe* const enc, uint64_t bitrate);
+
+/** decode/decompress a frame
  * 
  * @param[in] codec instance variable
  * @param[in] ibuf the compressed frame
  * @param[in] ibuf_sz  the size in bytes of the compressed data
- * @param[out] obuf where the output frame will be written.
- * @param[in] obuf_sz the number of bytes available in 'obuf'.
- * @param[in,out] width expected (in) and actual (out) image width
- * @param[in,out] height expected (in) and actual (out) image height
- * @param[in] format the desired format of the output buffer
+ * @param[out] obuf where the output frame will be written. must be w*h*3 bytes.
+ * @param[in] width  width of output image
+ * @param[in] height height of output image
  *
  * @return NVPIPE_SUCCESS on success, nonzero on error.
  */
@@ -148,15 +151,13 @@ NVPIPE_VISIBLE nvp_err_t
 nvpipe_decode(nvpipe* const __restrict codec,
               const void* const __restrict ibuf,
               const size_t ibuf_sz,
-              void* const __restrict output_buffer,
-              size_t output_buffer_size,
-              size_t* const __restrict width,
-              size_t* const __restrict height,
-              enum NVPipeImageFormat format);
+              void* const __restrict obuf,
+              size_t width,
+              size_t height);
 
-/*! Retrieve human-readable error message for the given error code.  Note that
+/** Retrieve human-readable error message for the given error code.  Note that
  * this is a pointer to constant memory that must NOT be freed or manipulated
- * by the memory. */
+ * by the user. */
 NVPIPE_VISIBLE const char*
 nvpipe_strerror(nvp_err_t error_code);
 

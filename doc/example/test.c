@@ -88,10 +88,9 @@ void SaveBufferBit(uint8_t *data, int length, char *str) {
 }
 
 int main( int argc, char* argv[] ) {
-
-    nvpipe* codec_1 = nvpipe_create(NVPIPE_CODEC_ID_H264_HARDWARE, 0);
-    nvpipe* codec_2 = nvpipe_create(NVPIPE_CODEC_ID_H264_HARDWARE, 0);
-
+  (void)argc; (void)argv;
+    nvpipe* enc = nvpipe_create_encoder(NVPIPE_H264_NVFFMPEG, 0);
+    nvpipe* dec = nvpipe_create_decoder(NVPIPE_H264_NVFFMPEG);
     
   //  int width = 1920;
    // int height = 1080;
@@ -100,7 +99,6 @@ int main( int argc, char* argv[] ) {
 
     size_t buffer_size = sizeof(uint8_t)*width*height*4;
     void* img_buffer = malloc(buffer_size);
-    size_t img_buffer_size = buffer_size;
     uint8_t* img_ptr0 = img_buffer;
     void* pkt_buffer = malloc(buffer_size);
     size_t pkt_buffer_size = buffer_size;
@@ -120,11 +118,10 @@ int main( int argc, char* argv[] ) {
         }
 
         
-            if ( nvpipe_encode(codec_1, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_IMAGE_FORMAT_RGBA) == 0 ) {
-                if ( nvpipe_decode(codec_2, pkt_buffer, pkt_buffer_size, img_buffer, img_buffer_size, &width, &height, NVPIPE_IMAGE_FORMAT_RGBA) == 0 ) {
+            if ( nvpipe_encode(enc, img_buffer, buffer_size, pkt_buffer, &pkt_buffer_size, width, height, NVPIPE_RGBA) == 0 ) {
+                if ( nvpipe_decode(dec, pkt_buffer, pkt_buffer_size, img_buffer, width, height) == 0 ) {
                     sprintf(image_filename, "decoded_%d.pgm", i);
                     SaveBufferRGBA(img_buffer, width, height, image_filename);
-                    //}
                 } else {
                     printf("something went wrong\n");
                 }
@@ -133,10 +130,9 @@ int main( int argc, char* argv[] ) {
             }
     }
 
-    nvpipe_destroy(codec_1);
-    nvpipe_destroy(codec_2);
+    nvpipe_destroy(enc);
+    nvpipe_destroy(dec);
     free(img_buffer);
     free(pkt_buffer);
     return 0;
-
 }

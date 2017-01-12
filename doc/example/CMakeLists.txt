@@ -23,16 +23,9 @@ set(NVPIPE "nvpipe")
 #link_directories($ENV{LD_LIBRARY_PATH})
 #find_package(CUDA)
 
-# some extra lib needed
-add_executable(test_app ${CMAKE_SOURCE_DIR}/doc/example/test.c)
-link_directories($ENV{CUDA_LIBRARY_PATH})
+if(USE_FFMPEG)
+  add_executable(test_app ${CMAKE_SOURCE_DIR}/doc/example/test.c)
+  link_directories($ENV{CUDA_LIBRARY_PATH})
 
-target_link_libraries(test_app ${NVPIPE})
-
-#add_executable(benchmark 
-#cuda_add_executable(benchmark_v2
-#                ${CMAKE_SOURCE_DIR}/doc/example/benchmarkRGBA.cxx
-#                ${CMAKE_SOURCE_DIR}/doc/example/file_io.cxx)
-
-#target_link_libraries(benchmark_v2 ${NVPIPE})
-#target_link_libraries(benchmark_v2 "-lnvToolsExt")
+  target_link_libraries(test_app ${NVPIPE})
+endif(USE_FFMPEG)
