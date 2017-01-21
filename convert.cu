@@ -114,7 +114,7 @@ yuv2g(const uint8_t y, const uint8_t u, const uint8_t v) {
 static inline __device__ float
 yuv2b(const uint8_t y, const uint8_t u, const uint8_t v) {
 	(void)v;
-	return (y-16)*1.164 + (u-128)*2.017;
+	return (y-16)*1.164f + (u-128)*2.017f;
 }
 
 /* Convert back from NV12 to RGB.   Note the RGB buffer is not pitched. */
