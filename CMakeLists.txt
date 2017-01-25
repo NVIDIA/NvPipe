@@ -118,6 +118,9 @@ cuda_add_library(${NVPIPE}
 	SHARED
 )
 
+# x86-64 libraries always need to be PIC.
+set_property(TARGET ${NVPIPE} PROPERTY POSITION_INDEPENDENT_CODE ON)
+
 # Linking with C for supercomputer-friendliness, but we still have some C++ in
 # the ffmpeg backend.
 if(NOT NvPipe_FFMPEG)
