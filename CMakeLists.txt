@@ -106,7 +106,7 @@ if(USE_FFMPEG AND PKG_CONFIG_FOUND)
     set(NvPipe_FFMPEG 1)
 endif(USE_FFMPEG AND PKG_CONFIG_FOUND)
 
-cuda_add_library(${NVPIPE}
+cuda_add_library(${NVPIPE} SHARED
   ${FFMPEG_SOURCES}
 	${CMAKE_SOURCE_DIR}/debug.c
 	${CMAKE_SOURCE_DIR}/decode.c
