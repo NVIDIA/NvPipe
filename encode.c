@@ -231,6 +231,7 @@ nvp_rate_control(const struct nvp_encoder* __restrict nvp) {
 	rc.disableBadapt = 1;
 	rc.targetQuality = 51;
 	rc.zeroReorderDelay = 1;
+	rc.enableNonRefP = 1;
 #endif
 	return rc;
 }
@@ -240,9 +241,9 @@ static NV_ENC_CONFIG
 nvp_config(const struct nvp_encoder* __restrict nvp) {
 	NV_ENC_CONFIG cfg = {0};
 	cfg.version = NV_ENC_CONFIG_VER;
-	cfg.profileGUID = NV_ENC_CODEC_PROFILE_AUTOSELECT_GUID;
-	cfg.gopLength = NVENC_INFINITE_GOPLENGTH;
-	cfg.frameIntervalP = 1; /* must be 1 because infinite GOP length */
+	cfg.profileGUID = NV_ENC_H264_PROFILE_CONSTRAINED_HIGH_GUID;
+	cfg.gopLength = 15;
+	cfg.frameIntervalP = 1; /* use only I and P frames. */
 	cfg.frameFieldMode = NV_ENC_PARAMS_FRAME_FIELD_MODE_FRAME;
 	cfg.mvPrecision = NV_ENC_MV_PRECISION_QUARTER_PEL;
 
@@ -255,8 +256,16 @@ nvp_config(const struct nvp_encoder* __restrict nvp) {
 	cfg.encodeCodecConfig.h264Config.sliceMode = 0;
 	cfg.encodeCodecConfig.h264Config.sliceModeData = 0;
 	const uint32_t yuv420 = 1; /* 3 for yuv444 */
+	/* Setup an encoder that puts an IDR every 60 frames, an I-frame every 15
+	 * frames, and the rest P-frames. */
 	cfg.encodeCodecConfig.h264Config.chromaFormatIDC = yuv420;
 	cfg.encodeCodecConfig.h264Config.maxNumRefFrames = 4;
+	cfg.encodeCodecConfig.h264Config.hierarchicalPFrames = 1;
+	cfg.encodeCodecConfig.h264Config.enableIntraRefresh = 1;
+	cfg.encodeCodecConfig.h264Config.enableVFR = 1;
+	cfg.encodeCodecConfig.h264Config.idrPeriod = 60;
+	cfg.encodeCodecConfig.h264Config.intraRefreshPeriod = 15;
+	cfg.encodeCodecConfig.h264Config.intraRefreshCnt = 5;
 	return cfg;
 }
 
@@ -544,23 +553,8 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 	enc.inputHeight = height;
 	enc.outputBitstream = nvp->nv12.bstream;
 	enc.completionEvent = NULL;
-	static size_t tstamp = 0;
-	enc.inputTimeStamp = tstamp;
-	tstamp++;
+	enc.inputTimeStamp = 0;
 	enc.pictureStruct = NV_ENC_PIC_STRUCT_FRAME;
-	/* We force every frame to be an intra frame, and every 30 frames to be an
-	 * IDR frame.  IDR and intra frames are basically the same, so it doesn't
-	 * matter much.  The scene changes in vis tools are large enough that
-	 * P-frames will create significant block artifacts, but if bandwidth is a
-	 * premium for you then you may want to change this to an IDR every 8 frames
-	 * and 0 just-intra-not-IDR frames. */
-	if(tstamp % 30 == 0) {
-		enc.encodePicFlags |= NV_ENC_PIC_FLAG_FORCEIDR;
-		enc.encodePicFlags |= NV_ENC_PIC_FLAG_OUTPUT_SPSPPS;
-		enc.codecPicParams.h264PicParams.refPicFlag = 1;
-	} else {
-		enc.encodePicFlags |= NV_ENC_PIC_FLAG_FORCEINTRA;
-	}
 
 	nvtxRangePush("EncodePicture");
 	const NVENCSTATUS encst = nvp->f.nvEncEncodePicture(nvp->encoder, &enc);
@@ -579,8 +573,7 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 	bitlock.version = NV_ENC_LOCK_BITSTREAM_VER;
 	bitlock.outputBitstream = nvp->nv12.bstream;
 	bitlock.doNotWait = false;
-	bitlock.ltrFrame = tstamp % 60 == 0;
-	bitlock.frameIdx = tstamp-1;
+	bitlock.frameIdx = 0;
 	nvtxRangePush("nvenc LockBitstream");
 	const NVENCSTATUS block = nvp->f.nvEncLockBitstream(nvp->encoder, &bitlock);
 	nvtxRangePop();
