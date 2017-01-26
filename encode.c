@@ -249,7 +249,7 @@ nvp_config(const struct nvp_encoder* __restrict nvp) {
 	cfg.rcParams = nvp_rate_control(nvp);
 	cfg.encodeCodecConfig.h264Config.idrPeriod = (uint32_t)4294967925ULL;
 	cfg.encodeCodecConfig.h264Config.adaptiveTransformMode =
-		NV_ENC_H264_ADAPTIVE_TRANSFORM_ENABLE;
+		NV_ENC_H264_ADAPTIVE_TRANSFORM_DISABLE;
 	cfg.encodeCodecConfig.h264Config.sliceMode = 3;
 	cfg.encodeCodecConfig.h264Config.sliceModeData = 4;
 	cfg.encodeCodecConfig.h264Config.sliceMode = 0;
