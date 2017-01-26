@@ -562,8 +562,6 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 		ERR(enc, "Error encoding frame: %d", encst);
 		errcode = NVPIPE_EENCODE;
 		goto fail_map;
-		/* Don't bother checking for Unmap errors; nothing could be done anyway. */
-		return NVPIPE_EENCODE;
 	}
 	nvtxRangePop();
 
@@ -579,15 +577,15 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 	nvtxRangePop();
 	if(NV_ENC_SUCCESS != block) {
 		ERR(enc, "error mapping output: %d", block);
-		nvp->f.nvEncUnmapInputResource(nvp->encoder, map.mappedResource);
-		return NVPIPE_EMAP;
+		errcode = NVPIPE_EMAP;
+		goto fail_map;
 	}
 	/* +10: we'll need 10 bytes for the NAL, below. */
 	if(bitlock.bitstreamSizeInBytes+10 > *obuf_sz) {
 		ERR(enc, "Cannot find 10 bytes in output buffer for NAL.");
 		nvp->f.nvEncUnlockBitstream(nvp->encoder, nvp->nv12.bstream);
-		nvp->f.nvEncUnmapInputResource(nvp->encoder, map.mappedResource);
-		return NVPIPE_EOVERFLOW;
+		errcode = NVPIPE_EOVERFLOW;
+		goto fail_map;
 	}
 	memcpy(obuf, bitlock.bitstreamBufferPtr, bitlock.bitstreamSizeInBytes);
 
@@ -607,15 +605,15 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 	                                                        nvp->nv12.bstream);
 	if(NV_ENC_SUCCESS != bunlock) {
 		ERR(enc, "error unmapping bitstream: %d", bunlock);
-		nvp->f.nvEncUnmapInputResource(nvp->encoder, map.mappedResource);
-		return NVPIPE_EUNMAP;
+		errcode = NVPIPE_EUNMAP;
+		goto fail_map;
 	}
 
 	NVENCSTATUS umap;
 fail_map:
 	umap = nvp->f.nvEncUnmapInputResource(nvp->encoder, map.mappedResource);
 	if(NV_ENC_SUCCESS != umap) {
-		ERR(enc, "Error unmapping input: %d", umap);
+		ERR(enc, "Error unmapping input: %d; previous error: %d", umap, errcode);
 		errcode = NVPIPE_EUNMAP;
 	}
 	CUcontext dummy;
