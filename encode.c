@@ -221,12 +221,10 @@ nvp_rate_control(const struct nvp_encoder* __restrict nvp) {
 	/* Prefer quality.  s/QUALITY/FRAMESIZE_CAP/ to optimize for size. */
 	rc.rateControlMode = NV_ENC_PARAMS_RC_2_PASS_QUALITY;
 	rc.averageBitRate = nvp->bitrate;
-	rc.vbvBufferSize = 0;
-	rc.vbvInitialDelay = 0;
 	/* Protect against overflow. */
 	const unsigned RATE_4K_30FPS = 140928614u;
-	rc.maxBitRate = MAX(nvp->bitrate*16u, RATE_4K_30FPS);
-	rc.averageBitRate = MIN(nvp->bitrate*4, RATE_4K_30FPS);
+	rc.maxBitRate = MAX(nvp->bitrate*2u, RATE_4K_30FPS);
+	rc.averageBitRate = MIN(nvp->bitrate, RATE_4K_30FPS);
 #if NVENCAPI_MAJOR_VERSION >= 7
 	/* We have lookahead disabled so this setting does not matter, but just to be
 	 * clear: we do not use B-frames. */
