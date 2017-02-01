@@ -58,10 +58,10 @@ DECLARE_CHANNEL(dec);
 
 struct nvp_decoder {
 	nvp_impl_t impl;
-	CUcontext ctx;
 	bool initialized;
 	CUvideodecoder decoder;
 	CUvideoparser parser;
+	CUevent ready;
 	/** Most of the involved parts of the logic in this file is sizing.  There are
 	 * multiple: 1) The size we expected images to be when creating the decoder;
 	 * 2) the size the user wanted when creating the decoder; 3) the size of the
@@ -174,6 +174,9 @@ nvp_cuvid_destroy(nvpipe* const __restrict cdc) {
 	if(nvp->reorg) {
 		nvp->reorg->destroy(nvp->reorg);
 		nvp->reorg = NULL;
+	}
+	if(cuEventDestroy(nvp->ready) != CUDA_SUCCESS) {
+		WARN(dec, "Error destroying sync event.");
 	}
 	free(nvp);
 }
@@ -337,18 +340,33 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	CUdeviceptr data = 0;
 	const unsigned pic = 0;
 	assert(nvp->decoder);
-	nvtxRangePush("map frame");
 	CUresult mrs = cuvidMapVideoFrame(nvp->decoder, pic,
 	                                  (unsigned long long*)&data, &pitch, &map);
-	nvtxRangePop();
 	if(CUDA_SUCCESS != mrs) {
 		ERR(dec, "Failed mapping frame: %d", mrs);
 		return mrs;
 	}
 
+	/* Record an event that will inform us when the mapping is ready. */
+	const CUresult evt = cuEventRecord(nvp->ready, 0);
+	if(CUDA_SUCCESS != evt) {
+		ERR(dec, "could not record synchronization event: %d", evt);
+		return evt;
+	}
+
 	if(NULL == nvp->reorg) {
 		nvp->reorg = nv122rgb();
 	}
+
+	/* We can submit work in the stream that nvp->reorg has, but since that work
+	 * will use the Mapped frame and cuvid does its work in the default stream,
+	 * make sure the 'reorg' work cannot start until the Map's work completes. */
+	const CUresult evwait = cuStreamWaitEvent(nvp->reorg->strm, nvp->ready, 0);
+	if(CUDA_SUCCESS != evwait) {
+		ERR(dec, "could not synchronize streams via event: %d", evwait);
+		return evwait;
+	}
+
 	nvp_err_t errcode = NVPIPE_SUCCESS;
 	nvtxRangePush("reorganize and copy");
 	/* reformat 'data' into 'nvp->rgb'. Both are device memory */
@@ -422,6 +440,13 @@ nvp_create_decoder() {
 
 	/* Ensure the runtime API initializes its implicit context. */
 	cudaDeviceSynchronize();
+
+	const CUresult cuerr = cuEventCreate(&nvp->ready, CU_EVENT_DISABLE_TIMING);
+	if(CUDA_SUCCESS != cuerr) {
+		ERR(dec, "could not create sync event: %d", cuerr);
+		free(nvp);
+		return NULL;
+	}
 
 	return (nvp_impl_t*)nvp;
 }
