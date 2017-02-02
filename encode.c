@@ -281,7 +281,7 @@ initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	/* 'Latency' here refers to how many frames of delay the encoder will see
 	 * before we need it to actually spit out a compressed buffer.  30+ frames
 	 * would be a "normal" latency; we use 0, so that's "low latency".
-	 * It has nothing to do with execution time, just affects the encoder's
+	 * It has little to do with execution time, mostly affects the encoder's
 	 * use of B-frames. */
 	init.presetGUID = NV_ENC_PRESET_LOW_LATENCY_HQ_GUID;
 	init.encodeWidth = init.darWidth = width;
@@ -294,7 +294,7 @@ initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	 * Regardless, we don't want async because our contract with clients is to be
 	 * synchronous to allow easy integration into PV/VisIt/VMD/etc. */
 	init.enableEncodeAsync = 0;
-	init.enablePTD = 1;
+	init.enablePTD = 1; /* let NvEnc choose between I-frame, P-frame. */
 	const NVENCSTATUS nerr = nvp->f.nvEncInitializeEncoder(nvp->encoder, &init);
 	if(NV_ENC_SUCCESS != nerr) {
 		ERR(enc, "error initializing encoder: %d", nerr);

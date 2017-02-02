@@ -49,7 +49,7 @@
 #include "nvpipe.h"
 #include "yuv.h"
 
-/* NvDec can actually do 8kx8k for H.264/HEVC, but this library does not yet
+/* NvDec can actually do 8kx8k for HEVC, but this library does not yet
  * support that codec anyway. */
 const size_t MAX_WIDTH = 4096;
 const size_t MAX_HEIGHT = 4096;
@@ -62,21 +62,23 @@ struct nvp_decoder {
 	CUvideodecoder decoder;
 	CUvideoparser parser;
 	CUevent ready;
-	/** Most of the involved parts of the logic in this file is sizing.  There are
-	 * multiple: 1) The size we expected images to be when creating the decoder;
-	 * 2) the size the user wanted when creating the decoder; 3) the size of the
-	 * image coming from the stream, and 4) the size that the user wants /now/.
-	 * Because windows might be resized, (1) is not always == (3) and (2) is not
-	 * always == (4). */
+	/** Most of the the logic in this file is related to sizing.  There are
+	 * multiple sizes: 1) The size we expected images to be when creating the
+	 * decoder; 2) the size the user wanted when creating the decoder; 3) the size
+	 * of the image coming from the stream, and 4) the size that the user wants
+	 * /now/.  (1) is not always (3) and (2) is not always (4): for one, windows
+	 * can be resized, and the encode side "sees" that sooner than we do, but
+	 * also h264 only works in 16x16 blocks, so it's plausible that the stream's
+	 * dimensions may not match the output dimensions for the entire session. */
 	struct {
-		size_t wi; /* what input/source dims Decoder was created with (1) */
+		size_t wi; /**< what input/source dims Decoder was created with (1) */
 		size_t hi;
-		size_t wdst; /* what *target* dims Decoder was created with (2) */
+		size_t wdst; /**< what *target* dims Decoder was created with (2) */
 		size_t hdst;
-		size_t wsrc; /* "source" width/height: what DecodePicture says. (3) */
+		size_t wsrc; /**< "source" width/height: what DecodePicture says. (3) */
 		size_t hsrc;
-		/* 4 is not explicitly stored: this will be the argument to _decode. */
-	} d; /* for "dims" */
+		/* 4 is not stored here: it will be the argument to _decode. */
+	} d; /**< for "dims" */
 	CUdeviceptr rgb; /**< temporary buffer to hold converted data. */
 	bool empty;
 	nv_fut_t* reorg; /**< reorganizes data from nv12 to RGB form. */
