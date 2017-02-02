@@ -82,6 +82,11 @@ struct nvp_decoder {
 	CUdeviceptr rgb; /**< temporary buffer to hold converted data. */
 	bool empty;
 	nv_fut_t* reorg; /**< reorganizes data from nv12 to RGB form. */
+	/** cuvid has an internal queue of finished frames, and fires off callbacks
+	 * we give it when a frame is added to that queue.  We use 'idx' to
+	 * communicate (essentially) which cuvid-internal-buffer ID has just
+	 * finished, set in our callback and read in our main code. */
+	unsigned idx;
 };
 
 static int dec_sequence(void* cdc, CUVIDEOFORMAT* fmt);
@@ -104,7 +109,7 @@ dec_initialize(struct nvp_decoder* nvp, size_t iwidth, size_t iheight,
 	crt.ulHeight = iheight;
 	nvp->d.wi = iwidth;
 	nvp->d.hi = iheight;
-	crt.ulNumDecodeSurfaces = 1;
+	crt.ulNumDecodeSurfaces = 2;
 	crt.ChromaFormat = cudaVideoChromaFormat_420;
 	crt.OutputFormat = cudaVideoSurfaceFormat_NV12;
 	crt.DeinterlaceMode = cudaVideoDeinterlaceMode_Adaptive;
@@ -238,11 +243,21 @@ dec_ode(void* cdc, CUVIDPICPARAMS* pic) {
 	return 1;
 }
 
+/* We'll use this as cuvid's "display" callback.  The intent is that the
+ * callback would e.g. copy the data into a texture and blit it to the screen.
+ * We just use it inform our main code which frame it should map next. */
+static int
+dec_display(void* cdc, CUVIDPARSERDISPINFO *dinfo) {
+	struct nvp_decoder* nvp = (struct nvp_decoder*)cdc;
+	nvp->idx = dinfo->picture_index;
+	return 1;
+}
+
 static nvp_err_t
 initialize_parser(struct nvp_decoder* nvp) {
 	CUVIDPARSERPARAMS prs = {0};
 	prs.CodecType = cudaVideoCodec_H264;
-	prs.ulMaxNumDecodeSurfaces = 1;
+	prs.ulMaxNumDecodeSurfaces = 2;
 	prs.ulErrorThreshold = 100;
 	/* when MaxDisplayDelay > 0, we can't assure that each input frame will be
 	 * ready immediately.  If your application can tolerate frame latency, you
@@ -252,7 +267,7 @@ initialize_parser(struct nvp_decoder* nvp) {
 	prs.pUserData = nvp;
 	prs.pfnSequenceCallback = dec_sequence;
 	prs.pfnDecodePicture = dec_ode;
-	prs.pfnDisplayPicture = NULL;
+	prs.pfnDisplayPicture = dec_display;
 	if(cuvidCreateVideoParser(&nvp->parser, &prs) != CUDA_SUCCESS) {
 		ERR(dec, "failed creating video parser.");
 		return NVPIPE_EDECODE;
@@ -340,9 +355,8 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	map.progressive_frame = 1;
 	unsigned pitch = 0;
 	CUdeviceptr data = 0;
-	const unsigned pic = 0;
 	assert(nvp->decoder);
-	CUresult mrs = cuvidMapVideoFrame(nvp->decoder, pic,
+	CUresult mrs = cuvidMapVideoFrame(nvp->decoder, nvp->idx,
 	                                  (unsigned long long*)&data, &pitch, &map);
 	if(CUDA_SUCCESS != mrs) {
 		ERR(dec, "Failed mapping frame: %d", mrs);
