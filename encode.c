@@ -262,10 +262,16 @@ nvp_config(const struct nvp_encoder* __restrict nvp) {
 	cfg.encodeCodecConfig.h264Config.maxNumRefFrames = 4;
 	cfg.encodeCodecConfig.h264Config.hierarchicalPFrames = 1;
 	cfg.encodeCodecConfig.h264Config.enableIntraRefresh = 1;
+	cfg.encodeCodecConfig.h264Config.numTemporalLayers = 1;
+	cfg.encodeCodecConfig.h264Config.enableConstrainedEncoding = 1;
+	cfg.encodeCodecConfig.h264Config.useConstrainedIntraPred = 1;
+	cfg.encodeCodecConfig.h264Config.level = NV_ENC_LEVEL_AUTOSELECT;
 	cfg.encodeCodecConfig.h264Config.enableVFR = 1;
 	cfg.encodeCodecConfig.h264Config.idrPeriod = 60;
 	cfg.encodeCodecConfig.h264Config.intraRefreshPeriod = 15;
 	cfg.encodeCodecConfig.h264Config.intraRefreshCnt = 5;
+	cfg.encodeCodecConfig.h264Config.ltrTrustMode = 1;
+	cfg.encodeCodecConfig.h264Config.ltrNumFrames = 1;
 	return cfg;
 }
 
