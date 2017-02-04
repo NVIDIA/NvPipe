@@ -89,7 +89,7 @@ typedef void nvpipe;
  *      [motion rank]:  1 being low motion;
  *                      2 being medium motion;
  *                      4 being high motion;
- *  See also:
+ * See also:
  *      http://www.adobe.com/content/dam/Adobe/en/devnet/
  */
 NVPIPE_VISIBLE nvpipe*
@@ -105,7 +105,7 @@ nvpipe_create_decoder(nvp_codec_t id);
 
 /** \brief free nvpipe instance
  *
- * clean up each instance created by nvpipe_create_instance();
+ * clean up each instance created by 'nvpipe_create_*()'.
  */
 NVPIPE_VISIBLE void
 nvpipe_destroy(nvpipe* const __restrict codec);
@@ -115,14 +115,14 @@ nvpipe_destroy(nvpipe* const __restrict codec);
  * User provides pointers for both input and output buffers.  The output buffer
  * must be large enough to accommodate the compressed data.  Sizing the output
  * buffer may be difficult; the call will return OUTPUT_BUFFER_OVERFLOW to
- * indicate that the user must increase the size of the buffer.  The parameter
- * will also be modified to indicate how much of the output buffer was actually
- * used.
- * 
+ * indicate that the user must increase the size of the buffer.
+ * On successful execution, the output buffer size will be modified to indicate
+ * how many bytes were actually filled.
+ *
  * @param[in] codec library instance to use
  * @param[in] ibuf  input buffer to compress
  * @param[in] ibuf_sz number of bytes in the input buffer
- * @param[out] obuf buffer to place compressed data into 
+ * @param[out] obuf buffer to place compressed data into
  * @param[in,out] obuf_sz number of bytes available in 'obuf', output is number
  *                        of bytes that were actually filled.
  * @param[in] width number of pixels in X of the input buffer
@@ -140,7 +140,7 @@ nvpipe_encode(nvpipe * const __restrict codec,
               const size_t width, const size_t height,
               nvp_fmt_t format);
 
-/** Change the bitrate used for an encoder.  The setting takes effect for
+/** Adjust the bitrate used for an encoder.  The setting takes effect for
  * subsequent frames.
  *
  * The bitrate determines the quality of the encoded image.  NvPipe will
@@ -153,7 +153,7 @@ NVPIPE_VISIBLE
 nvp_err_t nvpipe_bitrate(nvpipe* const enc, uint64_t bitrate);
 
 /** decode/decompress a frame
- * 
+ *
  * @param[in] codec instance variable
  * @param[in] ibuf the compressed frame
  * @param[in] ibuf_sz  the size in bytes of the compressed data
