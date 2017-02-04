@@ -391,6 +391,7 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	if(CUDA_SUCCESS != sub) {
 		nvtxRangePop();
 		errcode = sub;
+		ERR(dec, "submission of reorg failed: %d", sub);
 		goto fail;
 	}
 	/* copy the result into the user's buffer. */
@@ -400,12 +401,14 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	if(CUDA_SUCCESS != hcopy) {
 		nvtxRangePop();
 		errcode = hcopy;
+		ERR(dec, "async DtoH failed: %d", hcopy);
 		goto fail;
 	}
 	const CUresult synch = nvp->reorg->sync(nvp->reorg);
 	if(CUDA_SUCCESS != synch) {
 		nvtxRangePop();
 		errcode = synch;
+		ERR(dec, "post-copy sync failed: %d", synch);
 		goto fail;
 	}
 	nvtxRangePop();
