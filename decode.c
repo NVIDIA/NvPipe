@@ -307,6 +307,8 @@ nvp_cuvid_decode(nvpipe* const cdc,
 		ERR(dec, "invalid width or height");
 		return NVPIPE_EINVAL;
 	}
+	assert(ibuf);
+	assert(obuf);
 
 	if(NULL == nvp->parser) { /* i.e. the first frame */
 		const nvp_err_t errc = initialize_parser(nvp);
