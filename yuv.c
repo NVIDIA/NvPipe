@@ -243,6 +243,9 @@ yuv2rgb_submit(void* y, const CUdeviceptr nv12, size_t width, size_t height,
 
 static void
 yuv2rgb_destroy(void* y) {
+	if(y == NULL) {
+		return;
+	}
 	yuv2rgb_t* conv = (yuv2rgb_t*)y;
 	strm_destroy(&conv->fut);
 	fqn_destroy(&conv->fqn);
