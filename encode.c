@@ -481,9 +481,7 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
                  const size_t width, const size_t height,
                  nvp_fmt_t format) {
 	struct nvp_encoder* nvp = (struct nvp_encoder*)codec;
-	if(nvp == NULL) {
-		return NVPIPE_EINVAL;
-	}
+	assert(nvp);
 	assert(nvp->impl.type == ENCODER);
 	if(height%2 != 0) {
 		ERR(enc, "NvPipe requires even heights.");

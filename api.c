@@ -24,6 +24,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <assert.h>
 #include "config.nvp.h"
 #include "debug.h"
 #include "nvpipe.h"
@@ -85,9 +86,7 @@ nvpipe_encode(nvpipe* const __restrict cdc,
               void* const __restrict obuf,
               size_t* const __restrict obuf_sz,
               const size_t width, const size_t height, nvp_fmt_t format) {
-	if(cdc == NULL) {
-		return NVPIPE_EINVAL;
-	}
+	assert(cdc);
 	nvp_impl_t* enc = (nvp_impl_t*)cdc;
 	return enc->encode(enc, ibuf,ibuf_sz, obuf,obuf_sz, width,height, format);
 }
@@ -99,9 +98,7 @@ nvpipe_decode(nvpipe* const __restrict codec,
               void* const __restrict obuf,
               size_t width,
               size_t height) {
-	if(codec == NULL) {
-		return NVPIPE_EINVAL;
-	}
+	assert(codec);
 	nvp_impl_t* dec = (nvp_impl_t*)codec;
 	return dec->decode(dec, ibuf,ibuf_sz, obuf, width,height);
 }
@@ -117,6 +114,7 @@ nvpipe_destroy(nvpipe* const __restrict codec) {
 
 nvp_err_t
 nvpipe_bitrate(nvpipe* const __restrict codec, uint64_t br) {
+	assert(codec);
 	if(codec == NULL) {
 		return NVPIPE_EINVAL;
 	}
