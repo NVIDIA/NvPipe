@@ -31,6 +31,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <nvToolsExt.h>
+#include <nvToolsExtCuda.h>
 #include "config.nvp.h"
 #include "debug.h"
 #include "yuv.h"
@@ -202,6 +203,7 @@ static nv_fut_t*
 rgb2yuv_create(const char* module, const char* fqnname, size_t components) {
 	rgb2yuv_t* rv = calloc(1, sizeof(rgb2yuv_t));
 	rv->fut = strm_create();
+	nvtxNameCuStreamA(rv->fut.strm, "encode");
 	rv->fut.submit = rgb2yuv_submit;
 	/* Overwrite destructor with ours. */
 	rv->fut.destroy = rgb2yuv_destroy;
@@ -257,6 +259,7 @@ static nv_fut_t*
 yuv2rgb_create(const char* module, const char* fqnname) {
 	yuv2rgb_t* rv = calloc(1, sizeof(yuv2rgb_t));
 	rv->fut = strm_create();
+	nvtxNameCuStreamA(rv->fut.strm, "decode");
 	rv->fut.submit = yuv2rgb_submit;
 	/* Overwrite destructor with ours. */
 	rv->fut.destroy = yuv2rgb_destroy;
