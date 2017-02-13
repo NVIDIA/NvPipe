@@ -320,7 +320,7 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	CUVIDSOURCEDATAPACKET pkt = {0};
 	pkt.payload_size = ibuf_sz;
 	pkt.payload = ibuf;
-	nvtxRangePush("parse video data");
+	nvtxRangePush("cuvid parse video data");
 	const CUresult parse = cuvidParseVideoData(nvp->parser, &pkt);
 	nvtxRangePop();
 	if(CUDA_SUCCESS != parse) {
