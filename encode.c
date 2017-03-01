@@ -264,7 +264,9 @@ nvp_config(const struct nvp_encoder* __restrict nvp) {
 	cfg.encodeCodecConfig.h264Config.enableIntraRefresh = 1;
 	cfg.encodeCodecConfig.h264Config.numTemporalLayers = 1;
 	cfg.encodeCodecConfig.h264Config.enableConstrainedEncoding = 1;
+#if NVENCAPI_MAJOR_VERSION >= 7
 	cfg.encodeCodecConfig.h264Config.useConstrainedIntraPred = 1;
+#endif
 	cfg.encodeCodecConfig.h264Config.level = NV_ENC_LEVEL_AUTOSELECT;
 	cfg.encodeCodecConfig.h264Config.enableVFR = 1;
 	cfg.encodeCodecConfig.h264Config.idrPeriod = 60;
