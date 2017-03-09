@@ -92,7 +92,7 @@ load_module(const char* module) {
 			if(ld == CUDA_SUCCESS) {
 				break;
 			}
-			WARN(yuv, "Could not load '%s'", fname);
+			WARN(yuv, "Could not load '%s': %d", fname, ld);
 		}
 	}
 	nvtxRangePop();
