@@ -92,23 +92,8 @@ Only shared libraries are supported.
 
 To use the `NVPIPE_H264_NVFFMPEG` or `NVPIPE_H264_FFMPEG` backends, the library
 must be compiled with FFMpeg support.  Furthermore a small modification is
-required in the FFMpeg source tree.  In libavcodec/cuvid.c:
-
-```c
-diff --git a/libavcodec/cuvid.c b/libavcodec/cuvid.c
-index 1da0e87..413b018 100644
---- a/libavcodec/cuvid.c
-+++ b/libavcodec/cuvid.c
-@@ -617,7 +617,7 @@ static av_cold int cuvid_decode_init(AVCodecContext *avctx)
-     }
-
-     cuparseinfo.ulMaxNumDecodeSurfaces = MAX_FRAME_COUNT;
--    cuparseinfo.ulMaxDisplayDelay = 4;
-+    cuparseinfo.ulMaxDisplayDelay = 0; // NVIDIA: hacked from 4 for nvpipe.
-     cuparseinfo.pUserData = avctx;
-     cuparseinfo.pfnSequenceCallback = cuvid_handle_video_sequence;
-     cuparseinfo.pfnDecodePicture = cuvid_handle_picture_decode;
-```
+required in the FFMpeg source tree: in libavcodec/cuvid.c, change the
+`ulMaxDisplayDelay` from 4 to 0.
 
 Then build FFMpeg with the 'nvenc' and 'cuvid' backends enabled, e.g.:
 
