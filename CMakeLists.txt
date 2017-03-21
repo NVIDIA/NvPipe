@@ -32,8 +32,7 @@ project(${NVPIPE})
 # Configuration
 set(config_install_dir "lib/cmake/${PROJECT_NAME}")
 set(include_install_dir "include")
-set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
-set(project_config "${generated_dir}/${PROJECT_NAME}Config.cmake")
+set(project_config "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake")
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 include_directories(BEFORE "${PROJECT_BINARY_DIR}")
