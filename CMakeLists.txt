@@ -32,8 +32,7 @@ project(${NVPIPE})
 # Configuration
 set(config_install_dir "lib/cmake/${PROJECT_NAME}")
 set(include_install_dir "include")
-set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
-set(project_config "${generated_dir}/${PROJECT_NAME}Config.cmake")
+set(project_config "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake")
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 include_directories(BEFORE "${PROJECT_BINARY_DIR}")
@@ -121,9 +120,19 @@ configure_file(
 	"${PROJECT_SOURCE_DIR}/config.nvp.h.in"
 	"${PROJECT_BINARY_DIR}/config.nvp.h"
 )
+export(TARGETS ${NVPIPE}
+  FILE "${PROJECT_BINARY_DIR}/nvpipeTargets.cmake"
+)
+export(PACKAGE ${NVPIPE})
 
-install(FILES nvpipe.h DESTINATION include)
-install(TARGETS ${NVPIPE} DESTINATION lib)
-install(FILES "${project_config}" DESTINATION lib/cmake/${NVPIPE})
+set_target_properties(${NVPIPE} PROPERTIES
+  PUBLIC_HEADER "${CMAKE_SOURCE_DIR}/nvpipe.h;${CMAKE_BINARY_DIR}/config.nvp.h"
+)
+install(TARGETS ${NVPIPE}
+  EXPORT nvpipeTargets
+  LIBRARY DESTINATION lib COMPONENT shlib
+  PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_PREFIX}/include"
+)
 install(FILES ${PROJECT_BINARY_DIR}/convert.ptx DESTINATION share/nvpipe)
-install(FILES ${PROJECT_BINARY_DIR}/config.nvp.h DESTINATION include)
+install(FILES "${project_config}" DESTINATION lib/cmake/${NVPIPE})
+install(EXPORT nvpipeTargets DESTINATION lib/cmake/${NVPIPE} COMPONENT dev)
