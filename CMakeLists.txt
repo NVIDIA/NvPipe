@@ -37,7 +37,7 @@ set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 include_directories(BEFORE "${PROJECT_BINARY_DIR}")
 
-find_package(CUDA)
+find_package(CUDA REQUIRED)
 list(APPEND CUDA_NVCC_FLAGS "--std c++11")
 
 include_directories(${CMAKE_SOURCE_DIR} ${CUDA_SDK_ROOT_DIR}/common/inc)
