@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2016-2017, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,7 @@
  * of the image coming from the stream, and 4) the size that the user wants
  * /now/.  Because windows might be resized, (1) is not always == (3) and
  * (2) is not always == (4).
- * Worse, typically one has a frame or more of latency.  So a resize operation
+ * Worse, we may have a frame or more of latency.  So a resize operation
  * will change (4) in frame N and then (3) in N+x. */
 #define _POSIX_C_SOURCE 201212L
 #include <assert.h>
