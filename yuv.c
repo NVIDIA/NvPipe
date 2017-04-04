@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2016-2017, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -68,7 +68,7 @@ typedef struct nv12_convert_metadata {
 /* Finding a PTX module for an installed library is painful.  This searches
  * some standard places until it finds one. */
 static ptx_fqn_t
-load_module(const char* module) {
+load_module(const char* module, const char* paths[], const size_t n) {
 	ptx_fqn_t rv = {0};
 
 	CUresult ld;
@@ -83,11 +83,11 @@ load_module(const char* module) {
 		strncat(fname, module, pathlen-strlen(userpath)-1);
 		ld = cuModuleLoad(&rv.mod, fname);
 	} else {
-		for(size_t i=0; i < N_PREFIX; ++i) {
-			strncpy(fname, pfix[i], pathlen);
+		for(size_t i=0; i < n; ++i) {
+			strncpy(fname, paths[i], pathlen);
 			const char* post = "/share/nvpipe/";
 			strncat(fname, post, pathlen);
-			strncat(fname, module, pathlen-strlen(pfix[i])-strlen(post));
+			strncat(fname, module, pathlen-strlen(paths[i])-strlen(post));
 			ld = cuModuleLoad(&rv.mod, fname);
 			if(ld == CUDA_SUCCESS) {
 				break;
@@ -209,7 +209,7 @@ rgb2yuv_create(const char* module, const char* fqnname, size_t components) {
 	rv->fut.destroy = rgb2yuv_destroy;
 	rv->components = components;
 
-	rv->fqn = load_module(module);
+	rv->fqn = load_module(module, pfix, N_PREFIX);
 	if(NULL == rv->fqn.mod) {
 		rv->fut.destroy(rv);
 		return NULL;
@@ -264,7 +264,7 @@ yuv2rgb_create(const char* module, const char* fqnname) {
 	/* Overwrite destructor with ours. */
 	rv->fut.destroy = yuv2rgb_destroy;
 
-	rv->fqn = load_module(module);
+	rv->fqn = load_module(module, pfix, N_PREFIX);
 	if(NULL == rv->fqn.mod) {
 		rv->fut.destroy(rv);
 		return NULL;
