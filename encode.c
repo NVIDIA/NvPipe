@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2016-2017, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,6 +38,7 @@
 #include "config.nvp.h"
 #include "debug.h"
 #include "internal-api.h"
+#include "module.h"
 #include "nvpipe.h"
 #include "yuv.h"
 
@@ -70,6 +71,8 @@ struct nvp_encoder {
 	 * we just convert /everything/ to nv12.
 	 * This "future" implements the conversion.  See yuv.[ch]. */
 	nv_fut_t* reorg;
+	char** paths;
+	size_t npaths;
 };
 
 #define CLEAR_DL_ERRORS() { \
@@ -177,6 +180,11 @@ nvp_nvenc_destroy(nvpipe* const __restrict cdc) {
 		WARN(enc, "Error destroying CUDA context.");
 	}
 	nvp->ctx = 0;
+
+	for(size_t i=0; i < nvp->npaths; ++i) {
+		free(nvp->paths[i]);
+	}
+	free(nvp->paths);
 	free(nvp);
 }
 
@@ -522,7 +530,7 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 
 	/* Reorganize the data into nv12 format. */
 	if(nvp->reorg == NULL) {
-		nvp->reorg = rgb2nv12(multiplier);
+		nvp->reorg = rgb2nv12(multiplier, (const char**)nvp->paths, nvp->npaths);
 	}
 	CUresult org = nvp->reorg->submit(nvp->reorg, nvp->rgb, width, height,
 	                                  nvp->nv12.buf, nvp->nv12.pitch);
@@ -702,12 +710,34 @@ clean:
 	return errcode;
 }
 
+static nvp_err_t
+nvp_ptx_path(nvpipe* codec, const char* path) {
+	struct nvp_encoder* nvp = (struct nvp_encoder*)codec;
+	assert(nvp->impl.type == ENCODER);
+
+	char** paths = realloc(nvp->paths, (nvp->npaths+1)*sizeof(char*));
+	if(paths == NULL) {
+		return NVPIPE_ENOMEM;
+	}
+	/* If the client is adding a runtime path, that probably means the default
+	 * paths won't work.  So shift the other elements down and insert this path
+	 * as element 0: that will cause us to search for it first. */
+	for(int i=(int)nvp->npaths; i >= 0; --i) {
+		paths[i] = paths[i-1];
+	}
+	paths[0] = strdup(path);
+	nvp->npaths += 1;
+	nvp->paths = paths;
+	return NVPIPE_SUCCESS;
+}
+
 nvp_impl_t*
 nvp_create_encoder(uint64_t bitrate) {
 	struct nvp_encoder* nvp = calloc(1, sizeof(struct nvp_encoder));
 	nvp->impl.type = ENCODER;
 	nvp->impl.encode = nvp_nvenc_encode;
 	nvp->impl.bitrate = nvp_nvenc_bitrate;
+	nvp->impl.ptx_path = nvp_ptx_path;
 	nvp->impl.decode = nvp_nvenc_decode;
 	nvp->impl.destroy = nvp_nvenc_destroy;
 	nvp->bitrate = bitrate;
@@ -769,6 +799,11 @@ nvp_create_encoder(uint64_t bitrate) {
 	if(cuCtxPopCurrent(&dummy) != CUDA_SUCCESS) {
 		WARN(enc, "Error popping our CUDA context");
 	}
+
+	/* These paths are used to search for PTX files. */
+	assert(nvp->paths == NULL);
+	nvp->paths = module_paths(&nvp->npaths);
+
 	// We can't initialize until we know resolution, which only comes on encode.
 	nvp->initialized = false;
 	return (nvp_impl_t*)nvp;

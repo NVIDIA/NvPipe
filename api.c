@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2016-2017, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -120,4 +120,14 @@ nvpipe_bitrate(nvpipe* const __restrict codec, uint64_t br) {
 	}
 	nvp_impl_t* nvp = (nvp_impl_t*)codec;
 	return nvp->bitrate(codec, br);
+}
+
+nvp_err_t
+nvpipe_ptx_path(nvpipe* __restrict codec, const char* path) {
+	assert(codec);
+	if(codec == NULL) {
+		return NVPIPE_EINVAL;
+	}
+	nvp_impl_t* nvp = (nvp_impl_t*)codec;
+	return nvp->ptx_path(codec, path);
 }

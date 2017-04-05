@@ -110,6 +110,17 @@ nvpipe_create_decoder(nvp_codec_t id);
 NVPIPE_VISIBLE void
 nvpipe_destroy(nvpipe* const __restrict codec);
 
+/** add runtime search path for PTX files.
+ *
+ * NvPipe needs to load ptx files that are compiled with the library.  The
+ * default install includes the appropriate directory based on the install path,
+ * but for situations where this is not known until runtime, this API provides a
+ * additional paths to search.
+ * Note that the search paths are specific to the encoder or decoder created.
+ * Processes with multiple objects will want to add paths for each object. */
+NVPIPE_VISIBLE nvp_err_t
+nvpipe_ptx_path(nvpipe* __restrict codec, const char* path);
+
 /** encode/compress images
  *
  * User provides pointers for both input and output buffers.  The output buffer
