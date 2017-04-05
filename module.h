@@ -1,4 +1,4 @@
-/* Copyright (c) 2016-2017, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,58 +24,29 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef NVPIPE_INTERNAL_API_H
-#define NVPIPE_INTERNAL_API_H
+#ifndef NVPIPE_MODULE_H_
+#define NVPIPE_MODULE_H_
 
-#include <stdbool.h>
-#include "config.nvp.h"
-#include "nvpipe.h"
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdlib.h>
+#include <cuda.h>
 
-typedef nvp_err_t (fqn_encode)(
-	nvpipe * const __restrict codec,
-	const void *const __restrict ibuf,
-	const size_t ibuf_sz,
-	void *const __restrict obuf,
-	size_t* const __restrict obuf_sz,
-	const size_t width, const size_t height,
-	nvp_fmt_t format
-);
-typedef nvp_err_t (fqn_bitrate)(nvpipe* codec, uint64_t);
-typedef nvp_err_t (fqn_ptx_path)(nvpipe* __restrict, const char*);
-typedef nvp_err_t (fqn_decode)(
-	nvpipe* const __restrict codec,
-	const void* const __restrict ibuf, const size_t ibuf_sz,
-	void* const __restrict obuf,
-	size_t width, size_t height
-);
-typedef void (fqn_destroy)(nvpipe* const __restrict);
+typedef struct nv12_convert_metadata {
+	CUmodule mod;
+	CUfunction func;
+} ptx_fqn_t;
 
-enum objtype {
-	ENCODER=0,
-	DECODER,
-#if NVPIPE_FFMPEG == 1
-	FFMPEG
-#endif
-};
+/** Search the given paths until a named PTX module is found.
+ * @param module the module (filename) to search for, e.g. "convert.ptx".
+ * @param paths the directories to search
+ * @param n the size of the 'paths' array. */
+ptx_fqn_t load_module(const char* module, const char* paths[], const size_t n);
 
-typedef struct nvp_impl_ {
-	enum objtype type;
-	fqn_encode* encode;
-	fqn_bitrate* bitrate;
-	fqn_ptx_path* ptx_path;
-	fqn_decode* decode;
-	fqn_destroy* destroy;
-} nvp_impl_t;
+/** Setup initial module paths.  All paths are dynamically allocated, and the
+ * array is dynamic as well; the caller should free.
+ * @param[out] n the number of paths setup. */
+char** module_paths(size_t* n);
 
-nvp_impl_t* nvp_create_encoder(uint64_t bitrate);
-nvp_impl_t* nvp_create_decoder();
-nvp_impl_t* nvp_create_ffmpeg(bool nvidia, uint64_t bitrate);
-
-#ifdef __cplusplus
-}
-#endif
+/** Release internal resources for the given loaded module. */
+void module_fqn_destroy(ptx_fqn_t* cnv);
 
 #endif
