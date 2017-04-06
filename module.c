@@ -55,7 +55,7 @@ ptx_fqn_t
 load_module(const char* module, const char* paths[], const size_t n) {
 	ptx_fqn_t rv = {0};
 
-	CUresult ld;
+	CUresult ld = CUDA_ERROR_FILE_NOT_FOUND;
 	const size_t pathlen = path_max();
 	char* fname = calloc(pathlen+1,1);
 
