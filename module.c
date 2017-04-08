@@ -77,6 +77,13 @@ load_module(const char* module, const char* paths[], const size_t n) {
 				break;
 			}
 			WARN(module, "Could not load '%s': %d", fname, ld);
+			strncpy(fname, paths[i], pathlen);
+			strncat(fname, module, pathlen-strlen(paths[i]));
+			ld = cuModuleLoad(&rv.mod, fname);
+			if(ld == CUDA_SUCCESS) {
+				break;
+			}
+			WARN(module, "Could not load '%s': %d", fname, ld);
 		}
 	}
 	nvtxRangePop();
