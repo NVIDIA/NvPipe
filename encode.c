@@ -572,12 +572,12 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 
 	nvtxRangePush("EncodePicture");
 	const NVENCSTATUS encst = nvp->f.nvEncEncodePicture(nvp->encoder, &enc);
+	nvtxRangePop();
 	if(encst != NV_ENC_SUCCESS) {
 		ERR(enc, "Error encoding frame: %d", encst);
 		errcode = NVPIPE_EENCODE;
 		goto fail_map;
 	}
-	nvtxRangePop();
 
 	/* locking the bitstream maps it to host memory; think of it like
 	 * mapping an OptiX buffer. */
