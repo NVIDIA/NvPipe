@@ -87,7 +87,7 @@ struct nvp_encoder {
  * theoretically should be done before killing the encoder context.  Sort of a
  * "glFinish" for the encode.
  *
- * NvEnc assumes the user is going to send down N frames and then request frame
+ * NvCodec assumes the user is going to send down N frames and then request frame
  * 0.  H264 (and other codecs) would then compress using its back- and
  * forward-prediction powers.  However, we are going to compress a single frame
  * and then wait for it, meaning forward-prediction is impossible.
@@ -112,7 +112,7 @@ flush_encoder(struct nvp_encoder* nvp, size_t timestamp) {
 	return true;
 }
 
-/* unregister a previously-registered resource.  NvEnc requires one 'register'
+/* unregister a previously-registered resource.  NvCodec requires one 'register'
  * a chunk of memory before it can be used as an input. */
 static void
 unregister_resource(struct nvp_encoder* nvp) {
@@ -167,7 +167,7 @@ nvp_nvenc_destroy(nvpipe* const __restrict cdc) {
 		nvp->encoder = NULL;
 	}
 	if(dlclose(nvp->lib) != 0) {
-		WARN(enc, "Error closing NvEnc library: %s", dlerror());
+		WARN(enc, "Error closing NvCodec encode library: %s", dlerror());
 	}
 	nvp->lib = NULL;
 
@@ -310,7 +310,7 @@ initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	 * Regardless, we don't want async because our contract with clients is to be
 	 * synchronous to allow easy integration into PV/VisIt/VMD/etc. */
 	init.enableEncodeAsync = 0;
-	init.enablePTD = 1; /* let NvEnc choose between I-frame, P-frame. */
+	init.enablePTD = 1; /* let NvCodec choose between I-frame, P-frame. */
 	const NVENCSTATUS nerr = nvp->f.nvEncInitializeEncoder(nvp->encoder, &init);
 	if(NV_ENC_SUCCESS != nerr) {
 		ERR(enc, "error initializing encoder: %d", nerr);
@@ -319,7 +319,7 @@ initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	return true;
 }
 
-/* Create a bitstream buffer.  NvEnc requires one to output into; it can't take
+/* Create a bitstream buffer.  NvCodec requires one to output into; it can't take
  * just a raw pointer. */
 static bool
 create_bitstream(struct nvp_encoder* nvp, size_t width, size_t height,
@@ -546,7 +546,7 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 		goto fail_ctx;
 	}
 
-	/* NvEnc requires one to map the GPU buffer to use it as an encode src. */
+	/* NvCodec requires one to map the GPU buffer to use it as an encode src. */
 	NV_ENC_MAP_INPUT_RESOURCE map = {0};
 	map.version = NV_ENC_MAP_INPUT_RESOURCE_VER;
 	map.registeredResource = nvp->nv12.registered;
@@ -758,7 +758,7 @@ nvp_create_encoder(uint64_t bitrate) {
 #endif
 	const NVENCSTATUS ierr = createNv(&nvp->f);
 	if(NV_ENC_SUCCESS != ierr) {
-		ERR(enc, "error loading NvEnc functions: %d", (int)ierr);
+		ERR(enc, "error loading NvCodec encode functions: %d", (int)ierr);
 		dlclose(nvp->lib);
 		free(nvp);
 		return NULL;
