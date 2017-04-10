@@ -91,7 +91,7 @@ rgb2yuv_submit(void* conv, const CUdeviceptr rgb, size_t width, size_t height,
 	assert(cnv->fqn.mod != NULL);
 	assert(cnv->fqn.func != 0);
 
-	/* NvEnc maxes out at 8k anyway. */
+	/* NvCodec maxes out at 8k anyway. */
 	assert(width <= 8192);
 	assert(height <= 8192);
 	/* We only support RGB and RGBA data. */
@@ -101,7 +101,7 @@ rgb2yuv_submit(void* conv, const CUdeviceptr rgb, size_t width, size_t height,
 		(void*)&rgb, &width, &height, &cnv->components, (void*)&nv12, &pitch, 0
 	};
 	const size_t shmem = 0;
-	/* NvEnc can't give us a height that isn't evenly divisible. */
+	/* NvCodec can't give us a height that isn't evenly divisible. */
 	assert(height%2 == 0);
 	const CUresult exec = cuLaunchKernel(cnv->fqn.func, (width/16)+1,(height/2),1,
 	                                     16,2,1, shmem, cnv->fut.strm,
