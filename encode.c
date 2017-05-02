@@ -33,6 +33,7 @@
 #include <string.h>
 
 #include <cuda.h>
+#include <cuda_runtime_api.h>
 #include <nvToolsExt.h>
 #include <nvEncodeAPI.h>
 #include "config.nvp.h"
@@ -161,15 +162,29 @@ unregister_resource(struct nvp_encoder* nvp) {
 	}
 }
 
+#define CHECK_CONTEXT(ctx_, errhandling) \
+	do { \
+		CUcontext current_ = 0x0; \
+		const CUresult res_ = cuCtxGetCurrent(&current_); \
+		if(CUDA_SUCCESS != res_) { \
+			WARN(enc, "Error getting while checking context: %d", res_); \
+			errhandling; \
+		} \
+		if(ctx_ != current_) { \
+			WARN(enc, "Active context (%p) in %s differs from the context that " \
+			     "was active at creation time (%p)!", current_, __FUNCTION__, \
+			     ctx_); \
+			errhandling; \
+		} \
+	} while(0)
+
 /* clean up any memory associated with this instance. */
 void
 nvp_nvenc_destroy(nvpipe* const __restrict cdc) {
 	struct nvp_encoder* nvp = (struct nvp_encoder*)cdc;
 	assert(nvp->impl.type == ENCODER);
 
-	if(cuCtxPushCurrent(nvp->ctx) != CUDA_SUCCESS) {
-		WARN(enc, "Could not make our CUDA context current");
-	}
+	CHECK_CONTEXT(nvp->ctx, {});
 
 	if(nvp->initialized) {
 		flush_encoder(nvp, 0);
@@ -213,9 +228,6 @@ nvp_nvenc_destroy(nvpipe* const __restrict cdc) {
 		nvp->reorg = NULL;
 	}
 
-	if(cuCtxDestroy(nvp->ctx) != CUDA_SUCCESS) {
-		WARN(enc, "Error destroying CUDA context.");
-	}
 	nvp->ctx = 0;
 
 	for(size_t i=0; i < nvp->npaths; ++i) {
@@ -543,17 +555,13 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 		return NVPIPE_EINVAL;
 	}
 
-	if(cuCtxPushCurrent(nvp->ctx) != CUDA_SUCCESS) {
-		ERR(enc, "Could not make our context current");
-		return NVPIPE_EENCODE;
-	}
+	CHECK_CONTEXT(nvp->ctx, return NVPIPE_EENCODE);
 
 	nvp_err_t errcode = NVPIPE_SUCCESS;
 	if(!nvp->initialized) {
 		if(!enc_initialize(nvp, width, height)) {
 			ERR(enc, "initialization failed");
-			errcode = NVPIPE_EINVAL;
-			goto fail_ctx;
+			return NVPIPE_EINVAL;
 		}
 	}
 	if(width != nvp->width || height != nvp->height) {
@@ -563,8 +571,7 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 	                                     width*height*multiplier);
 	if(cpyimg != CUDA_SUCCESS) {
 		ERR(enc, "error copying RGB[A] input buffer to GPU: %d", cpyimg);
-		errcode = cpyimg;
-		goto fail_ctx;
+		return cpyimg;
 	}
 
 	/* Reorganize the data into nv12 format. */
@@ -574,15 +581,13 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 	CUresult org = nvp->reorg->submit(nvp->reorg, nvp->rgb, width, height,
 	                                  nvp->nv12.buf, nvp->nv12.pitch);
 	if(CUDA_SUCCESS != org) {
-		errcode = org;
-		goto fail_ctx;
+		return org;
 	}
 	/* EncodePicture (or MapInputResource for that matter) does not accept a
 	 * stream, so we force our conversion to finish immediately. */
 	org = nvp->reorg->sync(nvp->reorg);
 	if(CUDA_SUCCESS != org) {
-		errcode = org;
-		goto fail_ctx;
+		return org;
 	}
 
 	/* NvCodec requires one to map the GPU buffer to use it as an encode src. */
@@ -594,8 +599,7 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 	nvtxRangePop();
 	if(mapp != NV_ENC_SUCCESS) {
 		ERR(enc, "Error %d mapping input: %s", mapp, nvcodec_strerror(mapp));
-		errcode = NVPIPE_EMAP;
-		goto fail_ctx;
+		return NVPIPE_EMAP;
 	}
 
 	NV_ENC_PIC_PARAMS enc = {0};
@@ -671,11 +675,6 @@ fail_map:
 		    nvcodec_strerror(umap), nvcodec_strerror(errcode));
 		errcode = NVPIPE_EUNMAP;
 	}
-	CUcontext dummy;
-fail_ctx:
-	if(cuCtxPopCurrent(&dummy) != CUDA_SUCCESS) {
-		WARN(enc, "Could not pop our CUDA context");
-	}
 
 	return errcode;
 }
@@ -701,10 +700,7 @@ nvp_nvenc_bitrate(nvpipe* codec, uint64_t bitrate) {
 	struct nvp_encoder* nvp = (struct nvp_encoder*)codec;
 	assert(nvp->impl.type == ENCODER);
 
-	if(cuCtxPushCurrent(nvp->ctx) != CUDA_SUCCESS) {
-		ERR(enc, "Could not make our CUDA context current");
-		return NVPIPE_EENCODE;
-	}
+	CHECK_CONTEXT(nvp->ctx, return NVPIPE_EENCODE);
 
 	nvp->bitrate = bitrate;
 	NV_ENC_CONFIG cfg = nvp_config(nvp);
@@ -739,15 +735,9 @@ nvp_nvenc_bitrate(nvpipe* codec, uint64_t bitrate) {
 	const NVENCSTATUS nerr = nvp->f.nvEncReconfigureEncoder(nvp->encoder, &rec);
 	if(NV_ENC_SUCCESS != nerr) {
 		ERR(enc, "error %d re-initializing: %s", nerr, nvcodec_strerror(nerr));
-		errcode = NVPIPE_EENCODE;
-		goto clean;
+		return NVPIPE_EENCODE;
 	}
 
-	CUcontext dummy;
-clean:
-	if(cuCtxPopCurrent(&dummy) != CUDA_SUCCESS) {
-		WARN(enc, "Could not pop our CUDA context");
-	}
 	return errcode;
 }
 
@@ -805,16 +795,16 @@ nvp_create_encoder(uint64_t bitrate) {
 		free(nvp);
 		return NULL;
 	}
-	const CUresult inierr = cuInit(0);
-	if(CUDA_SUCCESS != inierr) {
-		ERR(enc, "CUDA initialization failed: %d", inierr);
-		dlclose(nvp->lib);
-		free(nvp);
-		return NULL;
+
+	/* ensure that cuda has created the implicit context. */
+	const cudaError_t syncerr = cudaDeviceSynchronize();
+	if(cudaSuccess != syncerr) {
+		WARN(enc, "Pre-existing CUDA error code: %d", syncerr);
+		/* try to continue anyway ... */
 	}
-	const unsigned flags = CU_CTX_SCHED_YIELD | CU_CTX_MAP_HOST;
-	if(cuCtxCreate(&nvp->ctx, flags, 0) != CUDA_SUCCESS) {
-		ERR(enc, "error creating CUDA context");
+	const CUresult currerr = cuCtxGetCurrent(&nvp->ctx);
+	if(CUDA_SUCCESS != currerr) {
+		ERR(enc, "Error getting context: %d", currerr);
 		dlclose(nvp->lib);
 		free(nvp);
 		return NULL;
@@ -836,11 +826,6 @@ nvp_create_encoder(uint64_t bitrate) {
 		return NULL;
 	}
 	assert(nvp->encoder);
-
-	CUcontext dummy;
-	if(cuCtxPopCurrent(&dummy) != CUDA_SUCCESS) {
-		WARN(enc, "Error popping our CUDA context");
-	}
 
 	/* These paths are used to search for PTX files. */
 	assert(nvp->paths == NULL);
