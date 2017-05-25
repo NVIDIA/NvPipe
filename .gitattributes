@@ -1,0 +1,5 @@
+* text=auto
+*.c text
+*.h text
+*.cxx text
+*.cu text
