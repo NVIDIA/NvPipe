@@ -103,8 +103,16 @@ if(USE_FFMPEG AND PKG_CONFIG_FOUND)
     set(NvPipe_FFMPEG 1)
 endif(USE_FFMPEG AND PKG_CONFIG_FOUND)
 
+if(MSVC)
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  set(winsrc ${CMAKE_SOURCE_DIR}/winposix.c)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W2")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W2")
+endif(MSVC)
+
 cuda_add_library(${NVPIPE} SHARED
   ${FFMPEG_SOURCES}
+  ${winsrc}
 	${CMAKE_SOURCE_DIR}/debug.c
 	${CMAKE_SOURCE_DIR}/decode.c
 	${CMAKE_SOURCE_DIR}/encode.c
