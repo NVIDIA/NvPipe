@@ -35,6 +35,30 @@ set(include_install_dir "include")
 set(project_config "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake")
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+set(sdkhelp "Directory where ReadMe.txt from the Video Codec SDK lives.")
+option(NVIDIA_VIDEO_CODEC_SDK ${sdkhelp} "")
+if("${NVIDIA_VIDEO_CODEC_SDK}" STREQUAL "OFF")
+  # We include a copy of the v5 SDK header to use as a fallback.
+  # But to keep our source unchanged, we always include "nvEncodeAPI.h", so
+  # copy the file to that name in our local directory.
+  file(COPY
+    "${PROJECT_SOURCE_DIR}/nvEncodeAPI-v5.h"
+    DESTINATION
+    "${PROJECT_BINARY_DIR}"
+  )
+  # file(COPY) can't rename the file.
+  file(RENAME
+    "${PROJECT_BINARY_DIR}/nvEncodeAPI-v5.h"
+    "${PROJECT_BINARY_DIR}/nvEncodeAPI.h"
+  )
+else()
+  include_directories(AFTER "${NVIDIA_VIDEO_CODEC_SDK}/Samples/common/inc")
+  # If we switched from NOT using an extracted SDK (above) to USING an
+  # extracted SDK, we might inadvertently pick up the old file.  Make sure
+  # it's been cleaned up.
+  file(REMOVE "${PROJECT_BINARY_DIR}/nvEncodeAPI.h")
+endif()
+
 include_directories(BEFORE "${PROJECT_BINARY_DIR}")
 
 find_package(CUDA REQUIRED)
