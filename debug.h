@@ -67,14 +67,14 @@ struct nvdbgchannel {
 		nv_parse_options(&nv_chn_##ch, dbg_); \
 	}
 
-#define TRACE(ch, args...) \
-	nv_dbg(Trace, &nv_chn_##ch, __FUNCTION__, args)
-#define ERR(ch, args...) \
-	nv_dbg(Err, &nv_chn_##ch, __FUNCTION__, args)
-#define WARN(ch, args...) \
-	nv_dbg(Warn, &nv_chn_##ch, __FUNCTION__, args)
-#define FIXME(ch, args...) \
-	nv_dbg(Fixme, &nv_chn_##ch, __FUNCTION__, args)
+#define TRACE(ch, ...) \
+	nv_dbg(Trace, &nv_chn_##ch, __FUNCTION__, __VA_ARGS__)
+#define ERR(ch, ...) \
+	nv_dbg(Err, &nv_chn_##ch, __FUNCTION__, __VA_ARGS__)
+#define WARN(ch, ...) \
+	nv_dbg(Warn, &nv_chn_##ch, __FUNCTION__, __VA_ARGS__)
+#define FIXME(ch, ...) \
+	nv_dbg(Fixme, &nv_chn_##ch, __FUNCTION__, __VA_ARGS__)
 
 /* for internal use only. */
 void nv_dbg(enum _nvDbgChannelClass, const struct nvdbgchannel*,
