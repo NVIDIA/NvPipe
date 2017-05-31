@@ -528,6 +528,59 @@ nvp_resize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	return true;
 }
 
+/** @return true if the given pointer was allocated on the device. */
+static bool
+is_device_ptr(const void* ptr) {
+	struct cudaPointerAttributes attr;
+	const cudaError_t perr = cudaPointerGetAttributes(&attr, ptr);
+	return perr == cudaSuccess && attr.devicePointer != NULL;
+}
+
+/* Reorganizes input data into NV12 format.
+ * The input data must be RGB or RGBA. */
+static cudaError_t
+reorganize(struct nvp_encoder* nvp, const void* rgb,
+           const size_t width, const size_t height, const size_t ncomponents) {
+	assert(ncomponents == 3 || ncomponents == 4);
+
+	/* Create our reorganization object if we need to.  We want to do this first
+	 * because it houses the stream we'll do our work in, and we might use the
+	 * stream for a copy. */
+	if(nvp->reorg == NULL) {
+		nvp->reorg = rgb2nv12(ncomponents, (const char**)nvp->paths, nvp->npaths);
+	}
+
+	/* Where do the data come from?  If it's not a device pointer then we need to
+	 * copy it to an internal buffer first. */
+	const void* src = rgb;
+	if(!is_device_ptr(rgb)) {
+		const cudaError_t cpyimg =
+			cudaMemcpyAsync((void*)nvp->rgb, rgb, width*height*ncomponents,
+			                cudaMemcpyHostToDevice, nvp->reorg->strm);
+		if(cpyimg != cudaSuccess) {
+			ERR(enc, "error copying RGB[A] input buffer to GPU: %d", cpyimg);
+			return cpyimg;
+		}
+		src = (const void*)nvp->rgb;
+	}
+
+	CUresult org = nvp->reorg->submit(nvp->reorg, (CUdeviceptr)src, width, height,
+	                                  nvp->nv12.buf, nvp->nv12.pitch);
+	if(CUDA_SUCCESS != org) {
+		return org;
+	}
+
+	/* Synchronize immediately.  Semantics of this API are synchronous, even if
+	 * internal operation is not.  It does not matter much for our case, since
+	 * we're going to EncodePicture / MapInputResource as soon as we return from
+	 * this, and neither of those APIs accept stream parameters. */
+	org = nvp->reorg->sync(nvp->reorg);
+	if(CUDA_SUCCESS != org) {
+		return org;
+	}
+	return cudaSuccess;
+}
+
 /** encode/compress images
  *
  * User provides pointers for both input and output buffers.  The output buffer
@@ -584,28 +637,9 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 		nvp_resize(nvp, width, height);
 	}
 
-	const cudaError_t cpyimg =
-		cudaMemcpy((void*)nvp->rgb, ibuf, width*height*multiplier,
-		           cudaMemcpyHostToDevice);
-	if(cpyimg != cudaSuccess) {
-		ERR(enc, "error copying RGB[A] input buffer to GPU: %d", cpyimg);
-		return cpyimg;
-	}
-
-	/* Reorganize the data into nv12 format. */
-	if(nvp->reorg == NULL) {
-		nvp->reorg = rgb2nv12(multiplier, (const char**)nvp->paths, nvp->npaths);
-	}
-	CUresult org = nvp->reorg->submit(nvp->reorg, nvp->rgb, width, height,
-	                                  nvp->nv12.buf, nvp->nv12.pitch);
-	if(CUDA_SUCCESS != org) {
-		return org;
-	}
-	/* EncodePicture (or MapInputResource for that matter) does not accept a
-	 * stream, so we force our conversion to finish immediately. */
-	org = nvp->reorg->sync(nvp->reorg);
-	if(CUDA_SUCCESS != org) {
-		return org;
+	const cudaError_t rerr = reorganize(nvp, ibuf, width, height, multiplier);
+	if(rerr != cudaSuccess) {
+		return rerr;
 	}
 
 	/* NvCodec requires one to map the GPU buffer to use it as an encode src. */
