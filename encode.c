@@ -836,7 +836,6 @@ nvp_create_encoder(uint64_t bitrate) {
 	params.version = NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER;
 	if(nvp->f.nvEncOpenEncodeSessionEx(&params, &nvp->encoder) != NV_ENC_SUCCESS) {
 		ERR(enc, "error creating encode session");
-		cuCtxDestroy(nvp->ctx);
 		dlclose(nvp->lib);
 		free(nvp);
 		return NULL;
