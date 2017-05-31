@@ -34,7 +34,7 @@
  * (2) is not always == (4).
  * Worse, we may have a frame or more of latency.  So a resize operation
  * will change (4) in frame N and then (3) in N+x. */
-#define _POSIX_C_SOURCE 201212L
+#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <stdbool.h>
 #include <stdint.h>

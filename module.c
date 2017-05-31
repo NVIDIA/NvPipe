@@ -24,11 +24,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#define _POSIX_C_SOURCE 201212L
+#define _POSIX_C_SOURCE 200809L
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#ifndef _MSC_VER
+#	include <unistd.h>
+#endif
 #include <nvToolsExt.h>
 #include "debug.h"
 #include "module.h"
@@ -38,6 +40,9 @@ DECLARE_CHANNEL(module)
 
 static unsigned long
 path_max() {
+#ifdef _WIN32
+	return 260;
+#else
 	errno = 0;
 	long rv = pathconf("/", _PC_PATH_MAX);
 	if(rv == -1 && errno != 0) {
@@ -47,6 +52,7 @@ path_max() {
 		rv = 4096;
 	}
 	return (unsigned long)rv;
+#endif
 }
 
 /* Finding a PTX module for an installed library is painful.  This searches

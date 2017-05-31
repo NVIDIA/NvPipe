@@ -59,6 +59,15 @@ struct nvdbgchannel {
 	(1U << Err) | (1U << Warn) | (1U << Fixme)
 /* creates a new debug channel.  debug channels are private to implementation,
  * and must not be declared in header files. */
+#ifdef _MSC_VER
+#define DECLARE_CHANNEL(ch) \
+	static struct nvdbgchannel nv_chn_##ch = { DEFAULT_CHFLAGS, #ch }; \
+	static void \
+	ch_init_##ch() { \
+		const char* dbg_ = getenv("NVPIPE_VERBOSE"); \
+		nv_parse_options(&nv_chn_##ch, dbg_); \
+	}
+#else
 #define DECLARE_CHANNEL(ch) \
 	static struct nvdbgchannel nv_chn_##ch = { DEFAULT_CHFLAGS, #ch }; \
 	__attribute__((constructor(200))) static void \
@@ -66,6 +75,7 @@ struct nvdbgchannel {
 		const char* dbg_ = getenv("NVPIPE_VERBOSE"); \
 		nv_parse_options(&nv_chn_##ch, dbg_); \
 	}
+#endif
 
 #define TRACE(ch, ...) \
 	nv_dbg(Trace, &nv_chn_##ch, __FUNCTION__, __VA_ARGS__)
@@ -79,7 +89,11 @@ struct nvdbgchannel {
 /* for internal use only. */
 void nv_dbg(enum _nvDbgChannelClass, const struct nvdbgchannel*,
               const char* func, const char* format, ...)
+#ifdef __GNUC__
               __attribute__((format(printf, 4, 5)));
+#else
+              ;
+#endif
 void nv_parse_options(struct nvdbgchannel*, const char* opt);
 
 #ifdef __cplusplus

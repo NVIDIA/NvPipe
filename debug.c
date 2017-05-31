@@ -24,28 +24,35 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#define _POSIX_C_SOURCE 201112L
+#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <string.h>
-#include <strings.h>
 #include <sys/types.h>
-#include <unistd.h>
+#ifdef _MSC_VER
+#	include "winposix.h"
+#else
+#	include <strings.h>
+#	include <unistd.h>
+#endif
 #include "debug.h"
 
 static long pid = -1;
 static bool color_enabled = false;
 
-__attribute__((constructor(101))) static void
+#ifdef __GNUC__
+__attribute__((constructor(101)))
+#endif
+static void
 fp_dbg_init() {
 	pid = (long)getpid();
+#ifdef _WIN32
+	color_enabled = isatty(_fileno(stdout)) == 1;
+#else
 	color_enabled = isatty(STDOUT_FILENO) == 1;
-#if 0
-	fprintf(stderr, "debugging setup: pid %ld, %s color\n", pid,
-	        color_enabled ? "" : "no");
 #endif
 }
 
@@ -128,7 +135,11 @@ name_class(const char* name) {
 /* parses options of the form "chname=+a,-b,+c;chname2=+d,-c". */
 void
 nv_parse_options(struct nvdbgchannel *ch, const char* opt) {
+#ifdef _MSC_VER
+	static_assert(sizeof(enum _nvDbgChannelClass) <= sizeof(unsigned),
+#else
 	_Static_assert(sizeof(enum _nvDbgChannelClass) <= sizeof(unsigned),
+#endif
 	               "to make sure we can't shift beyond flags");
 	/* special case: if the environment variable is simply "1", then turn
 	 * everything on. */

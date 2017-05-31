@@ -25,12 +25,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 /* Encoding backend that directly uses the "nvEnc" API. */
-#define _POSIX_C_SOURCE 201212L
+#define _POSIX_C_SOURCE 200809L
 #include <assert.h>
-#include <dlfcn.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#ifdef _WIN32
+#	include "winposix.h"
+#else
+#	include <dlfcn.h>
+#endif
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
@@ -43,7 +47,13 @@
 #include "nvpipe.h"
 #include "yuv.h"
 
+#ifdef _WIN64
+static const char* const NVENC_LIB = "nvEncodeAPI64.dll";
+#elif defined(_WIN32)
+static const char* const NVENC_LIB = "nvEncodeAPI.dll";
+#else
 static const char* const NVENC_LIB = "libnvidia-encode.so.1";
+#endif
 static const size_t MAX_WIDTH = 4096;
 static const size_t MAX_HEIGHT = 4096;
 
@@ -262,6 +272,10 @@ register_resource(struct nvp_encoder* nvp, size_t width, size_t height,
 	return true;
 }
 
+#ifdef _MSC_VER
+#	define MIN(a,b) (a) < (b) ? (a) : (b)
+#	define MAX(a,b) (a) > (b) ? (a) : (b)
+#else
 #define MIN(a,b) ({ \
 	__typeof__(a) _a = (a); \
 	__typeof__(b) _b = (b); \
@@ -270,6 +284,7 @@ register_resource(struct nvp_encoder* nvp, size_t width, size_t height,
 	__typeof__(a) _a = (a); \
 	__typeof__(b) _b = (b); \
 	_a > _b ? _a : b; })
+#endif
 
 /* Give back the NvPipe hardcoded rate control settings. */
 static NV_ENC_RC_PARAMS
@@ -278,7 +293,6 @@ nvp_rate_control(const struct nvp_encoder* __restrict nvp) {
 	rc.version = NV_ENC_RC_PARAMS_VER;
 	/* Prefer quality.  s/QUALITY/FRAMESIZE_CAP/ to optimize for size. */
 	rc.rateControlMode = NV_ENC_PARAMS_RC_2_PASS_QUALITY;
-	rc.averageBitRate = nvp->bitrate;
 	/* Protect against overflow. */
 	const unsigned RATE_4K_30FPS = 140928614u;
 	rc.maxBitRate = MAX(nvp->bitrate*2u, RATE_4K_30FPS);
@@ -350,8 +364,10 @@ initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	 * It has little to do with execution time, mostly affects the encoder's
 	 * use of B-frames. */
 	init.presetGUID = NV_ENC_PRESET_LOW_LATENCY_HQ_GUID;
-	init.encodeWidth = init.darWidth = width;
-	init.encodeHeight = init.darHeight = height;
+	assert(width < 4294967295);
+	assert(height < 4294967295);
+	init.encodeWidth = init.darWidth = (uint32_t)width;
+	init.encodeHeight = init.darHeight = (uint32_t)height;
 	init.maxEncodeWidth = MAX_WIDTH; /* We may resize up to this later. */
 	init.maxEncodeHeight = MAX_HEIGHT;
 	init.frameRateNum = 30;
@@ -648,7 +664,7 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 
 	/* This NAL signals the end of this packet; you might semi-correctly think of
 	 * this as an h264 frame boundary. */
-	uint8_t* nal = obuf + bitlock.bitstreamSizeInBytes;
+	uint8_t* nal = ((uint8_t*)obuf) + bitlock.bitstreamSizeInBytes;
 	nal[0] = nal[1] = 0;
 	nal[2] = 1;
 	nal[3] = 9;

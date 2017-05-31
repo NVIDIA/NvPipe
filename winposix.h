@@ -26,6 +26,8 @@
  */
 /** Wrappers for making windows work like POSIX systems. */
 #pragma once
+#include <io.h>
+#include <process.h>
 
 #ifndef _MSC_VER
 static_assert(false);
@@ -40,4 +42,6 @@ int dlclose(void* handle);
 void* dlsym(void* __restrict handle, const char* __restrict symbol);
 const char* dlerror();
 
+#define getpid _getpid
+#define isatty _isatty
 #define strncasecmp _strnicmp
