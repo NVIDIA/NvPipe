@@ -200,15 +200,15 @@ nvp_nvenc_destroy(nvpipe* const __restrict cdc) {
 		flush_encoder(nvp, 0);
 	}
 	if(nvp->rgb) {
-		const CUresult cuerr = cuMemFree(nvp->rgb);
-		if(cuerr != CUDA_SUCCESS) {
-			WARN(enc, "error %d deallocating temporary memory", (int)cuerr);
+		const cudaError_t merr = cudaFree((void*)nvp->rgb);
+		if(merr != cudaSuccess) {
+			WARN(enc, "error %d deallocating temporary memory", (int)merr);
 		}
 	}
 	unregister_resource(nvp);
 	if(nvp->nv12.buf) {
-		const CUresult cuerr = cuMemFree(nvp->nv12.buf);
-		if(cuerr != CUDA_SUCCESS) {
+		const cudaError_t cuerr = cudaFree((void*)nvp->nv12.buf);
+		if(cuerr != cudaSuccess) {
 			WARN(enc, "error %d deallocating YUV memory", (int)cuerr);
 		}
 		nvp->nv12.buf = 0;
@@ -412,7 +412,7 @@ nvp_allocate_buffers(struct nvp_encoder* nvp, size_t width, size_t height) {
 	assert(nvp->nv12.buf == 0);
 
 	const size_t nbytes_rgba = width*height*4;
-	const CUresult rgberr = cuMemAlloc(&nvp->rgb, nbytes_rgba);
+	const CUresult rgberr = cudaMalloc((void**)&nvp->rgb, nbytes_rgba);
 	if(CUDA_SUCCESS != rgberr) {
 		ERR(enc, "error allocating chroma mem: %d", rgberr);
 		return false;
@@ -420,11 +420,11 @@ nvp_allocate_buffers(struct nvp_encoder* nvp, size_t width, size_t height) {
 
 	CUresult cuerr;
 	nvp->nv12.pitch = 0;
-	cuerr = cuMemAllocPitch(&nvp->nv12.buf, &nvp->nv12.pitch, width,
-													height*3/2, 4);
+	cuerr = cudaMallocPitch((void**)&nvp->nv12.buf, &nvp->nv12.pitch, width,
+	                        height*3/2);
 	if(CUDA_SUCCESS != cuerr) {
 		ERR(enc, "error allocating pitched memory: %d", cuerr);
-		cuMemFree(nvp->rgb);
+		cudaFree((void*)nvp->rgb);
 		nvp->rgb = 0;
 		return false;
 	}
@@ -507,8 +507,8 @@ nvp_resize(struct nvp_encoder* nvp, size_t width, size_t height) {
 		return false;
 	}
 	nvp->nv12.bstream = NULL;
-	cuMemFree(nvp->nv12.buf);
-	cuMemFree(nvp->rgb);
+	cudaFree((void*)nvp->nv12.buf);
+	cudaFree((void*)nvp->rgb);
 	nvp->rgb = 0;
 	nvp->nv12.buf = 0;
 	nvp->nv12.pitch = 0;
@@ -583,9 +583,11 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 	if(width != nvp->width || height != nvp->height) {
 		nvp_resize(nvp, width, height);
 	}
-	const CUresult cpyimg = cuMemcpyHtoD(nvp->rgb, ibuf,
-	                                     width*height*multiplier);
-	if(cpyimg != CUDA_SUCCESS) {
+
+	const cudaError_t cpyimg =
+		cudaMemcpy((void*)nvp->rgb, ibuf, width*height*multiplier,
+		           cudaMemcpyHostToDevice);
+	if(cpyimg != cudaSuccess) {
 		ERR(enc, "error copying RGB[A] input buffer to GPU: %d", cpyimg);
 		return cpyimg;
 	}
