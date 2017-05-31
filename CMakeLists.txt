@@ -108,6 +108,14 @@ if(MSVC)
   set(winsrc ${CMAKE_SOURCE_DIR}/winposix.c)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W2")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W2")
+  include_directories($ENV{NVTOOLSEXT_PATH}/include)
+  link_directories($ENV{NVTOOLSEXT_PATH}/lib/x64)
+  link_directories($ENV{CUDA_PATH}/lib/x64)
+  # "nvToolsExt" naming differs on windows.
+  set(nvpipe_libs ${nvpipe_libs} nvToolsExt64_1)
+else()
+  # "dl" and "pthread" only needed on Unix platforms.
+  set(nvpipe_libs ${nvpipe_libs} nvToolsExt dl pthread)
 endif(MSVC)
 
 cuda_add_library(${NVPIPE} SHARED
@@ -137,7 +145,8 @@ set_property(TARGET ${NVPIPE} PROPERTY C_STANDARD 99)
 set_property(TARGET ${NVPIPE} PROPERTY CXX_STANDARD 11)
 
 target_link_libraries(${NVPIPE} PRIVATE
-  ${nvpipe_libs} cuda nvToolsExt nvcuvid dl pthread
+  ${nvpipe_libs}
+  cuda nvcuvid
 )
 
 add_subdirectory(doc/example)
@@ -163,9 +172,11 @@ set_target_properties(${NVPIPE} PROPERTIES
 )
 install(TARGETS ${NVPIPE}
   EXPORT nvpipeTargets
+  DESTINATION ${NvPipe_PREFIX}
   LIBRARY DESTINATION lib COMPONENT shlib
   PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_PREFIX}/include"
 )
 install(FILES ${PROJECT_BINARY_DIR}/convert.ptx DESTINATION share/nvpipe)
 install(FILES "${project_config}" DESTINATION lib/cmake/${NVPIPE})
 install(EXPORT nvpipeTargets DESTINATION lib/cmake/${NVPIPE} COMPONENT dev)
+install(EXPORT nvpipeTargets DESTINATION lib/cmake/${NVPIPE})
