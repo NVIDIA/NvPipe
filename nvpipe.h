@@ -75,7 +75,7 @@ typedef void nvpipe;
 #ifdef __GNUC__
 #	define NVPIPE_VISIBLE __attribute__((visibility("default")))
 #else
-#	define NVPIPE_VISIBLE /* no visibility attribute */
+#	define NVPIPE_VISIBLE __declspec(dllexport)
 #endif
 
 /** @fn create nvpipe instance
