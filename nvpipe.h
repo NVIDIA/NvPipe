@@ -168,7 +168,8 @@ nvp_err_t nvpipe_bitrate(nvpipe* const enc, uint64_t bitrate);
  * @param[in] codec instance variable
  * @param[in] ibuf the compressed frame
  * @param[in] ibuf_sz  the size in bytes of the compressed data
- * @param[out] obuf where the output frame will be written. must be w*h*3 bytes.
+ * @param[out] obuf where the output RGB frame will be written.
+ *             must be at least width*height*3 bytes.
  * @param[in] width  width of output image
  * @param[in] height height of output image
  *
