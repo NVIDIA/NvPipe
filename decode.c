@@ -63,6 +63,11 @@ struct nvp_decoder {
 	CUvideodecoder decoder;
 	CUvideoparser parser;
 	CUevent ready;
+	/** Source data may be on the device or the host.  However, cuvid only
+	 * accepts host data.  If data come in on the device, we'll use this
+	 * as a staging buffer for cuvid's input. */
+	void* hbuf;
+	size_t hbuf_sz;
 	/** Most of the the logic in this file is related to sizing.  There are
 	 * multiple sizes: 1) The size we expected images to be when creating the
 	 * decoder; 2) the size the user wanted when creating the decoder; 3) the size
@@ -189,6 +194,9 @@ nvp_cuvid_destroy(nvpipe* const __restrict cdc) {
 		WARN(dec, "Error destroying sync event.");
 	}
 
+	free(nvp->hbuf);
+	nvp->hbuf_sz = 0;
+
 	for(size_t i=0; i < nvp->npaths; ++i) {
 		free(nvp->paths[i]);
 	}
@@ -283,6 +291,47 @@ initialize_parser(struct nvp_decoder* nvp) {
 	return NVPIPE_SUCCESS;
 }
 
+/** @return true if the given pointer was allocated on the device. */
+static bool
+is_device_ptr(const void* ptr) {
+	struct cudaPointerAttributes attr;
+	const cudaError_t perr = cudaPointerGetAttributes(&attr, ptr);
+	return perr == cudaSuccess && attr.devicePointer != NULL;
+}
+
+/* Our decoder accepts input data from either the device or the host.  However,
+ * nvcuvid only accepts host data.  Thus we copy the data to a host buffer to
+ * satisfy the cuvid API.
+ * To avoid an allocation every time the user submits a frame, we keep a small
+ * host buffer in the decode object and reuse it for every submission.
+ * @returns the host pointer to use for source data, which will be one of the
+ *          user's host pointer OR our internal buffer. */
+static const void*
+source_data(struct nvp_decoder* nvp, const void* ibuf, const size_t ibuf_sz) {
+	const void* srcbuf = ibuf;
+	if(is_device_ptr(ibuf)) {
+		if(ibuf_sz > nvp->hbuf_sz) {
+			void* buf = realloc(nvp->hbuf, ibuf_sz);
+			if(buf == NULL) {
+				ERR(dec, "allocation failure of %zu-byte temp host buffer", ibuf_sz);
+				return NULL;
+			}
+			nvp->hbuf = buf;
+			nvp->hbuf_sz = ibuf_sz;
+		}
+		assert(nvp->hbuf_sz >= ibuf_sz);
+		const cudaError_t hcpy = cudaMemcpy(nvp->hbuf, ibuf, ibuf_sz,
+		                                    cudaMemcpyDeviceToHost);
+		if(hcpy != cudaSuccess) {
+			ERR(dec, "copy to temp host buffer failed: %d", hcpy);
+			return NULL;
+		}
+		srcbuf = nvp->hbuf;
+	}
+
+	return srcbuf;
+}
+
 /** decode/decompress packets
  *
  * Decode a frame into the given buffer.
@@ -325,9 +374,16 @@ nvp_cuvid_decode(nvpipe* const cdc,
 		}
 	}
 
+	/* cuvid needs host mem. if the input isn't host mem, use an internal staging
+	 * buffer. */
+	const void* srcbuf = source_data(nvp, ibuf, ibuf_sz);
+	if(srcbuf == NULL) {
+		return NVPIPE_ENOMEM;
+	}
+
 	CUVIDSOURCEDATAPACKET pkt = {0};
 	pkt.payload_size = ibuf_sz;
-	pkt.payload = ibuf;
+	pkt.payload = srcbuf;
 	nvtxRangePush("cuvid parse video data");
 	const CUresult parse = cuvidParseVideoData(nvp->parser, &pkt);
 	nvtxRangePop();
@@ -384,7 +440,7 @@ nvp_cuvid_decode(nvpipe* const cdc,
 		nvp->reorg = nv122rgb((const char**)nvp->paths, nvp->npaths);
 	}
 
-	/* We can submit work in the stream that nvp->reorg has, but since that work
+	/* We'll submit work in the stream that nvp->reorg has, but since that work
 	 * will use the Mapped frame and cuvid does its work in the default stream,
 	 * make sure the 'reorg' work cannot start until the Map's work completes. */
 	const CUresult evwait = cuStreamWaitEvent(nvp->reorg->strm, nvp->ready, 0);
