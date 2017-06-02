@@ -358,6 +358,47 @@ source_data(struct nvp_decoder* nvp, const void* ibuf, const size_t ibuf_sz) {
 	return srcbuf;
 }
 
+/* reorganize the data from 'nv12' into 'obuf'. */
+static nvp_err_t
+reorganize(struct nvp_decoder* nvp, CUdeviceptr nv12,
+           const size_t width, const size_t height,
+           void* const __restrict obuf, unsigned pitch) {
+	/* is 'obuf' a device pointer?  if so, we can reorganize directly into
+	 * that instead of staging through 'nvp->rgb' first. */
+	CUdeviceptr dstbuf = nvp->rgb;
+	if(is_device_ptr(obuf)) {
+		dstbuf = (CUdeviceptr)obuf;
+	}
+	assert(nvp->reorg);
+	const CUresult sub = nvp->reorg->submit(nvp->reorg, nv12, width, height,
+	                                        (CUdeviceptr)dstbuf, pitch);
+	if(CUDA_SUCCESS != sub) {
+		ERR(dec, "submission of reorganization kernel failed: %d", sub);
+		return sub;
+	}
+
+	/* If 'obuf' was *not* the user's buffer, we need to copy from 'dstbuf' into
+	 * 'obuf'. */
+	if(!is_device_ptr(obuf)) {
+		const size_t nb_rgb = nvp->d.wdst*nvp->d.hdst*3;
+		const cudaError_t hcopy = cudaMemcpyAsync(obuf, (void*)dstbuf, nb_rgb,
+		                                          cudaMemcpyDeviceToHost,
+		                                          nvp->reorg->strm);
+		if(cudaSuccess != hcopy) {
+			ERR(dec, "async DtoH failed: %d", hcopy);
+			return hcopy;
+		}
+	}
+
+	const CUresult synch = nvp->reorg->sync(nvp->reorg);
+	if(CUDA_SUCCESS != synch) {
+		ERR(dec, "reorganization sync failed: %d", synch);
+		return synch;
+	}
+
+	return NVPIPE_SUCCESS;
+}
+
 /** decode/decompress packets
  *
  * Decode a frame into the given buffer.
@@ -470,42 +511,18 @@ nvp_cuvid_decode(nvpipe* const cdc,
 		return evwait;
 	}
 
-	nvp_err_t errcode = NVPIPE_SUCCESS;
-	nvtxRangePush("reorganize and copy");
-	/* reformat 'data' into 'nvp->rgb'. Both are device memory */
-	const CUresult sub = nvp->reorg->submit(nvp->reorg, data, width, height,
-	                                        nvp->rgb, pitch);
-	if(CUDA_SUCCESS != sub) {
-		nvtxRangePop();
-		errcode = sub;
-		ERR(dec, "submission of reorg failed: %d", sub);
-		goto fail;
-	}
-	/* copy the result into the user's buffer. */
-	const size_t nb_rgb = nvp->d.wdst*nvp->d.hdst*3;
-	const CUresult hcopy = cuMemcpyDtoHAsync(obuf, nvp->rgb, nb_rgb,
-	                                         nvp->reorg->strm);
-	if(CUDA_SUCCESS != hcopy) {
-		nvtxRangePop();
-		errcode = hcopy;
-		ERR(dec, "async DtoH failed: %d", hcopy);
-		goto fail;
-	}
-	const CUresult synch = nvp->reorg->sync(nvp->reorg);
-	if(CUDA_SUCCESS != synch) {
-		nvtxRangePop();
-		errcode = synch;
-		ERR(dec, "post-copy sync failed: %d", synch);
-		goto fail;
-	}
+	nvtxRangePush("reorganize");
+	const nvp_err_t orgerr = reorganize(nvp, data, width, height, obuf,
+	                                    pitch);
 	nvtxRangePop();
-
-fail:
-	if(cuvidUnmapVideoFrame(nvp->decoder, data) != CUDA_SUCCESS) {
-		WARN(dec, "Could not unmap frame.");
+	/* Unmap immediately. Even if reorganize() gave an error, we still need to
+	 * do the unmap before we return, and the return is the only thing left. */
+	const CUresult maperr = cuvidUnmapVideoFrame(nvp->decoder, data);
+	if(CUDA_SUCCESS != maperr) {
+		WARN(dec, "Unmapping frame failed: %d", maperr);
 	}
 
-	return errcode;
+	return orgerr;
 }
 
 static nvp_err_t
