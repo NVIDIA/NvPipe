@@ -64,12 +64,12 @@ include_directories(BEFORE "${PROJECT_BINARY_DIR}")
 find_package(CUDA REQUIRED)
 list(APPEND CUDA_NVCC_FLAGS "--std c++11")
 
-include_directories(${CMAKE_SOURCE_DIR} ${CUDA_SDK_ROOT_DIR}/common/inc)
+include_directories(${PROJECT_SOURCE_DIR} ${CUDA_SDK_ROOT_DIR}/common/inc)
 link_directories("${CUDA_TOOLKIT_ROOT_DIR}/lib64")
 link_directories("${CMAKE_INSTALL_PREFIX}/lib")
 
 cuda_compile_ptx(ptxprograms
-	convert.cu
+  convert.cu
 )
 
 option(USE_FFMPEG "Enable ffmpeg-based backend." OFF)
@@ -94,18 +94,18 @@ if(USE_FFMPEG AND PKG_CONFIG_FOUND)
     link_directories(${AVUTIL_LIBRARY_DIRS})
 
     set(FFMPEG_SOURCES
-      ${CMAKE_SOURCE_DIR}/ffmpeg.cxx
-      ${CMAKE_SOURCE_DIR}/codec/abstract.cxx
-      ${CMAKE_SOURCE_DIR}/codec/hw.cxx
-      ${CMAKE_SOURCE_DIR}/util/format.cxx
-      ${CMAKE_SOURCE_DIR}/util/kernels.cu
+      ${PROJECT_SOURCE_DIR}/ffmpeg.cxx
+      ${PROJECT_SOURCE_DIR}/codec/abstract.cxx
+      ${PROJECT_SOURCE_DIR}/codec/hw.cxx
+      ${PROJECT_SOURCE_DIR}/util/format.cxx
+      ${PROJECT_SOURCE_DIR}/util/kernels.cu
     )
     set(NvPipe_FFMPEG 1)
 endif(USE_FFMPEG AND PKG_CONFIG_FOUND)
 
 if(MSVC)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-  set(winsrc ${CMAKE_SOURCE_DIR}/winposix.c)
+  set(winsrc ${PROJECT_SOURCE_DIR}/winposix.c)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W2")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W2")
   include_directories($ENV{NVTOOLSEXT_PATH}/include)
@@ -121,15 +121,15 @@ endif(MSVC)
 cuda_add_library(${NVPIPE} SHARED
   ${FFMPEG_SOURCES}
   ${winsrc}
-	${CMAKE_SOURCE_DIR}/debug.c
-	${CMAKE_SOURCE_DIR}/decode.c
-	${CMAKE_SOURCE_DIR}/encode.c
-	${CMAKE_SOURCE_DIR}/error.c
-	${CMAKE_SOURCE_DIR}/module.c
-	${CMAKE_SOURCE_DIR}/yuv.c
-	${CMAKE_SOURCE_DIR}/api.c
-	${ptxprograms}
-	SHARED
+  ${PROJECT_SOURCE_DIR}/debug.c
+  ${PROJECT_SOURCE_DIR}/decode.c
+  ${PROJECT_SOURCE_DIR}/encode.c
+  ${PROJECT_SOURCE_DIR}/error.c
+  ${PROJECT_SOURCE_DIR}/module.c
+  ${PROJECT_SOURCE_DIR}/yuv.c
+  ${PROJECT_SOURCE_DIR}/api.c
+  ${ptxprograms}
+  SHARED
 )
 
 # x86-64 libraries always need to be PIC.
@@ -138,7 +138,7 @@ set_property(TARGET ${NVPIPE} PROPERTY POSITION_INDEPENDENT_CODE ON)
 # Linking with C for supercomputer-friendliness, but we still have some C++ in
 # the ffmpeg backend.
 if(NOT NvPipe_FFMPEG)
-	set_target_properties(${NVPIPE} PROPERTIES LINKER_LANGUAGE C)
+  set_target_properties(${NVPIPE} PROPERTIES LINKER_LANGUAGE C)
 endif()
 # The direct nvEnc/cuvid backends use c99.
 set_property(TARGET ${NVPIPE} PROPERTY C_STANDARD 99)
@@ -159,8 +159,8 @@ set(NvPipe_DECODE 1)
 set(NvPipe_ENCODE 1)
 set(NvPipe_PREFIX ${CMAKE_INSTALL_PREFIX})
 configure_file(
-	"${PROJECT_SOURCE_DIR}/config.nvp.h.in"
-	"${PROJECT_BINARY_DIR}/config.nvp.h"
+  "${PROJECT_SOURCE_DIR}/config.nvp.h.in"
+  "${PROJECT_BINARY_DIR}/config.nvp.h"
 )
 export(TARGETS ${NVPIPE}
   FILE "${PROJECT_BINARY_DIR}/nvpipeTargets.cmake"
@@ -168,7 +168,7 @@ export(TARGETS ${NVPIPE}
 export(PACKAGE ${NVPIPE})
 
 set_target_properties(${NVPIPE} PROPERTIES
-  PUBLIC_HEADER "${CMAKE_SOURCE_DIR}/nvpipe.h;${CMAKE_BINARY_DIR}/config.nvp.h"
+  PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/nvpipe.h;${CMAKE_BINARY_DIR}/config.nvp.h"
 )
 install(TARGETS ${NVPIPE}
   EXPORT nvpipeTargets
