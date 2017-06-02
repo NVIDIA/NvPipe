@@ -62,7 +62,7 @@ struct nvp_decoder {
 	bool initialized;
 	CUvideodecoder decoder;
 	CUvideoparser parser;
-	CUevent ready;
+	cudaEvent_t ready;
 	/** Source data may be on the device or the host.  However, cuvid only
 	 * accepts host data.  If data come in on the device, we'll use this
 	 * as a staging buffer for cuvid's input. */
@@ -137,8 +137,9 @@ dec_initialize(struct nvp_decoder* nvp, size_t iwidth, size_t iheight,
 
 	if(dstwidth != nvp->d.wdst || dstheight != nvp->d.hdst) {
 		if(nvp->rgb != 0) {
-			if(cuMemFree(nvp->rgb) != CUDA_SUCCESS) {
-				ERR(dec, "Could not free internal RGB buffer.");
+			const cudaError_t frerr = cudaFree((void*)nvp->rgb);
+			if(cudaSuccess != frerr) {
+				ERR(dec, "Could not free internal RGB buffer: %d", frerr);
 				return false;
 			}
 			nvp->rgb = 0;
@@ -148,8 +149,9 @@ dec_initialize(struct nvp_decoder* nvp, size_t iwidth, size_t iheight,
 		 * do a standard CUDA copy to put it in the output buffer, since our API
 		 * works completely on host memory for now. */
 		const size_t nb_rgb = dstwidth*dstheight*3;
-		if(cuMemAlloc(&nvp->rgb, nb_rgb) != CUDA_SUCCESS) {
-			ERR(dec, "could not allocate temporary RGB buffer");
+		const cudaError_t merr = cudaMalloc((void**)&nvp->rgb, nb_rgb);
+		if(cudaSuccess != merr) {
+			ERR(dec, "could not allocate temporary RGB buffer: %d", merr);
 			nvp->rgb = 0;
 			return false;
 		}
@@ -183,14 +185,14 @@ nvp_cuvid_destroy(nvpipe* const __restrict cdc) {
 	if(nvp->parser && cuvidDestroyVideoParser(nvp->parser) != CUDA_SUCCESS) {
 		WARN(dec, "Error destroying parser.");
 	}
-	if(cuMemFree(nvp->rgb) != CUDA_SUCCESS) {
+	if(cudaSuccess != cudaFree((void*)nvp->rgb)) {
 		WARN(dec, "Error freeing decode temporary buffer.");
 	}
 	if(nvp->reorg) {
 		nvp->reorg->destroy(nvp->reorg);
 		nvp->reorg = NULL;
 	}
-	if(cuEventDestroy(nvp->ready) != CUDA_SUCCESS) {
+	if(cudaSuccess != cudaEventDestroy(nvp->ready)) {
 		WARN(dec, "Error destroying sync event.");
 	}
 
@@ -496,8 +498,8 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	}
 
 	/* Record an event that will inform us when the mapping is ready. */
-	const CUresult evt = cuEventRecord(nvp->ready, 0);
-	if(CUDA_SUCCESS != evt) {
+	const cudaError_t evt = cudaEventRecord(nvp->ready, 0);
+	if(cudaSuccess != evt) {
 		ERR(dec, "could not record synchronization event: %d", evt);
 		return evt;
 	}
@@ -505,8 +507,9 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	/* We'll submit work in the stream that nvp->reorg has, but since that work
 	 * will use the Mapped frame and cuvid does its work in the default stream,
 	 * make sure the 'reorg' work cannot start until the Map's work completes. */
-	const CUresult evwait = cuStreamWaitEvent(nvp->reorg->strm, nvp->ready, 0);
-	if(CUDA_SUCCESS != evwait) {
+	const cudaError_t evwait = cudaStreamWaitEvent(nvp->reorg->strm, nvp->ready,
+	                                               0);
+	if(cudaSuccess != evwait) {
 		ERR(dec, "could not synchronize streams via event: %d", evwait);
 		return evwait;
 	}
@@ -586,8 +589,9 @@ nvp_create_decoder() {
 	/* Ensure the runtime API initializes its implicit context. */
 	cudaDeviceSynchronize();
 
-	const CUresult cuerr = cuEventCreate(&nvp->ready, CU_EVENT_DISABLE_TIMING);
-	if(CUDA_SUCCESS != cuerr) {
+	const cudaError_t cuerr =
+		cudaEventCreateWithFlags(&nvp->ready, cudaEventDisableTiming);
+	if(cudaSuccess != cuerr) {
 		ERR(dec, "could not create sync event: %d", cuerr);
 		free(nvp);
 		return NULL;
