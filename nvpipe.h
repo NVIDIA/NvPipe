@@ -131,9 +131,9 @@ nvpipe_ptx_path(nvpipe* __restrict codec, const char* path);
  * how many bytes were actually filled.
  *
  * @param[in] codec library instance to use
- * @param[in] ibuf  input buffer to compress
+ * @param[in] ibuf input buffer to compress. host or device pointer.
  * @param[in] ibuf_sz number of bytes in the input buffer
- * @param[out] obuf buffer to place compressed data into
+ * @param[out] obuf (host) buffer to place compressed data into.
  * @param[in,out] obuf_sz number of bytes available in 'obuf', output is number
  *                        of bytes that were actually filled.
  * @param[in] width number of pixels in X of the input buffer
@@ -166,10 +166,10 @@ nvp_err_t nvpipe_bitrate(nvpipe* const enc, uint64_t bitrate);
 /** decode/decompress a frame
  *
  * @param[in] codec instance variable
- * @param[in] ibuf the compressed frame
+ * @param[in] ibuf the compressed frame, on the host or the device.
  * @param[in] ibuf_sz  the size in bytes of the compressed data
  * @param[out] obuf where the output RGB frame will be written.
- *             must be at least width*height*3 bytes.
+ *             must be at least width*height*3 bytes. host or device pointer.
  * @param[in] width  width of output image
  * @param[in] height height of output image
  *
