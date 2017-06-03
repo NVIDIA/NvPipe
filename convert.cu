@@ -24,9 +24,11 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <cassert>
 #include <cstddef>
 #include <cinttypes>
 #include <device_functions.h>
+#include <cuda.h>
 
 static inline __device__ float
 clamp(const float v, const float low, const float high) {
@@ -162,4 +164,43 @@ yuv2rgb(const uint8_t* const __restrict yuv,
 		(yuv2b(Y[i], u[0], v[0]) + yuv2b(Y[i], u[1], v[1]) +
 		 yuv2b(Y[i], u[2], v[2]) + yuv2b(Y[i], u[3], v[3])) / 4.0, 0, 255
 	);
+}
+
+extern "C" cudaError_t
+launch_yuv2rgb(CUdeviceptr nv12, size_t width, size_t height, unsigned pitch,
+               CUdeviceptr rgb, cudaStream_t strm) {
+	/* NvCodec maxes out at 8k anyway. */
+	assert(width <= 8192);
+	assert(height <= 8192);
+	/* NvCodec can't give us a height that isn't evenly divisible. */
+	assert(height%2 == 0);
+	const void* args[] = {
+		(void*)&nv12, &width, &height, &pitch, (void*)&rgb, 0
+	};
+	const dim3 gdim = {(unsigned)(width/16)+1, (unsigned)(height/2), 1};
+	const dim3 bdim = {16, 2, 1};
+	const size_t shmem = 0;
+	return cudaLaunchKernel((const void**)yuv2rgb, gdim, bdim, (void**)args,
+	                        shmem, strm);
+}
+
+extern "C" cudaError_t
+launch_rgb2yuv(CUdeviceptr rgb, size_t width, size_t height, size_t ncomp,
+               CUdeviceptr nv12, unsigned pitch, cudaStream_t strm) {
+	/* NvCodec maxes out at 8k anyway. */
+	assert(width <= 8192);
+	assert(height <= 8192);
+	/* We only support RGB and RGBA data. */
+	assert(ncomp == 3 || ncomp == 4);
+	/* NvCodec can't give us a height that isn't evenly divisible. */
+	assert(height%2 == 0);
+
+	const void* args[] = {
+		(void*)&rgb, &width, &height, &ncomp, (void*)&nv12, &pitch,
+	};
+	dim3 gdim = {(unsigned)(width/16)+1, (unsigned)(height/2), 1};
+	dim3 bdim = {16, 2, 1};
+	const size_t shmem = 0;
+	return cudaLaunchKernel((const void*)rgb2yuv, gdim, bdim, (void**)args,
+	                        shmem, strm);
 }

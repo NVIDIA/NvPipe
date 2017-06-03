@@ -44,7 +44,6 @@ typedef nvp_err_t (fqn_encode)(
 	nvp_fmt_t format
 );
 typedef nvp_err_t (fqn_bitrate)(nvpipe* codec, uint64_t);
-typedef nvp_err_t (fqn_ptx_path)(nvpipe* __restrict, const char*);
 typedef nvp_err_t (fqn_decode)(
 	nvpipe* const __restrict codec,
 	const void* const __restrict ibuf, const size_t ibuf_sz,
@@ -65,7 +64,6 @@ typedef struct nvp_impl_ {
 	enum objtype type;
 	fqn_encode* encode;
 	fqn_bitrate* bitrate;
-	fqn_ptx_path* ptx_path;
 	fqn_decode* decode;
 	fqn_destroy* destroy;
 } nvp_impl_t;

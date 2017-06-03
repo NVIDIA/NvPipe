@@ -46,7 +46,6 @@
 #include "config.nvp.h"
 #include "debug.h"
 #include "internal-api.h"
-#include "module.h"
 #include "nvpipe.h"
 #include "yuv.h"
 
@@ -93,8 +92,6 @@ struct nvp_decoder {
 	 * communicate (essentially) which NvCodec-internal-buffer ID has just
 	 * finished, set in our callback and read in our main code. */
 	unsigned idx;
-	char** paths;
-	size_t npaths;
 };
 
 static int dec_sequence(void* cdc, CUVIDEOFORMAT* fmt);
@@ -198,12 +195,6 @@ nvp_cuvid_destroy(nvpipe* const __restrict cdc) {
 
 	free(nvp->hbuf);
 	nvp->hbuf_sz = 0;
-
-	for(size_t i=0; i < nvp->npaths; ++i) {
-		free(nvp->paths[i]);
-	}
-	free(nvp->paths);
-	free(nvp);
 }
 
 static int
@@ -310,7 +301,7 @@ initialize(struct nvp_decoder* nvp) {
 	}
 
 	if(NULL == nvp->reorg) {
-		nvp->reorg = nv122rgb((const char**)nvp->paths, nvp->npaths);
+		nvp->reorg = nv122rgb();
 		if(NULL == nvp->reorg) {
 			return NVPIPE_ENOENT;
 		}
@@ -375,7 +366,7 @@ reorganize(struct nvp_decoder* nvp, CUdeviceptr nv12,
 	const CUresult sub = nvp->reorg->submit(nvp->reorg, nv12, width, height,
 	                                        (CUdeviceptr)dstbuf, pitch);
 	if(CUDA_SUCCESS != sub) {
-		ERR(dec, "submission of reorganization kernel failed: %d", sub);
+		ERR(dec, "reorganization kernel failed: %d", sub);
 		return sub;
 	}
 
@@ -528,27 +519,6 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	return orgerr;
 }
 
-static nvp_err_t
-nvp_cuvid_ptx_path(nvpipe* codec, const char* path) {
-	struct nvp_decoder* nvp = (struct nvp_decoder*)codec;
-	assert(nvp->impl.type == DECODER);
-
-	char** paths = realloc(nvp->paths, (nvp->npaths+1)*sizeof(char*));
-	if(paths == NULL) {
-		return NVPIPE_ENOMEM;
-	}
-	/* If the client is adding a runtime path, that probably means the default
-	 * paths won't work.  So shift the other elements down and insert this path
-	 * as element 0: that will cause us to search for it first. */
-	for(int i=(int)nvp->npaths; i >= 0; --i) {
-		paths[i] = paths[i-1];
-	}
-	paths[0] = strdup(path);
-	nvp->npaths += 1;
-	nvp->paths = paths;
-	return NVPIPE_SUCCESS;
-}
-
 /* The decoder can't encode.  Just error and bail. */
 static nvp_err_t
 nvp_cuvid_encode(nvpipe * const __restrict codec,
@@ -582,7 +552,6 @@ nvp_create_decoder() {
 	nvp->impl.type = DECODER;
 	nvp->impl.encode = nvp_cuvid_encode;
 	nvp->impl.bitrate = nvp_cuvid_bitrate;
-	nvp->impl.ptx_path = nvp_cuvid_ptx_path;
 	nvp->impl.decode = nvp_cuvid_decode;
 	nvp->impl.destroy = nvp_cuvid_destroy;
 
@@ -596,9 +565,6 @@ nvp_create_decoder() {
 		free(nvp);
 		return NULL;
 	}
-
-	/* These paths are used to search for PTX files. */
-	nvp->paths = module_paths(&nvp->npaths);
 
 	return (nvp_impl_t*)nvp;
 }

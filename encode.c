@@ -43,7 +43,6 @@
 #include "config.nvp.h"
 #include "debug.h"
 #include "internal-api.h"
-#include "module.h"
 #include "nvpipe.h"
 #include "yuv.h"
 
@@ -82,8 +81,6 @@ struct nvp_encoder {
 	 * we just convert /everything/ to nv12.
 	 * This "future" implements the conversion.  See yuv.[ch]. */
 	nv_fut_t* reorg;
-	char** paths;
-	size_t npaths;
 };
 
 #define CLEAR_DL_ERRORS() { \
@@ -239,12 +236,6 @@ nvp_nvenc_destroy(nvpipe* const __restrict cdc) {
 	}
 
 	nvp->ctx = 0;
-
-	for(size_t i=0; i < nvp->npaths; ++i) {
-		free(nvp->paths[i]);
-	}
-	free(nvp->paths);
-	free(nvp);
 }
 
 /* Registers the memory 'mem' with the encoder. */
@@ -547,7 +538,7 @@ reorganize(struct nvp_encoder* nvp, const void* rgb,
 	 * because it houses the stream we'll do our work in, and we might use the
 	 * stream for a copy. */
 	if(nvp->reorg == NULL) {
-		nvp->reorg = rgb2nv12(ncomponents, (const char**)nvp->paths, nvp->npaths);
+		nvp->reorg = rgb2nv12(ncomponents);
 	}
 
 	/* Where do the data come from?  If it's not a device pointer then we need to
@@ -793,34 +784,12 @@ nvp_nvenc_bitrate(nvpipe* codec, uint64_t bitrate) {
 	return errcode;
 }
 
-static nvp_err_t
-nvp_ptx_path(nvpipe* codec, const char* path) {
-	struct nvp_encoder* nvp = (struct nvp_encoder*)codec;
-	assert(nvp->impl.type == ENCODER);
-
-	char** paths = realloc(nvp->paths, (nvp->npaths+1)*sizeof(char*));
-	if(paths == NULL) {
-		return NVPIPE_ENOMEM;
-	}
-	/* If the client is adding a runtime path, that probably means the default
-	 * paths won't work.  So shift the other elements down and insert this path
-	 * as element 0: that will cause us to search for it first. */
-	for(int i=(int)nvp->npaths; i >= 0; --i) {
-		paths[i] = paths[i-1];
-	}
-	paths[0] = strdup(path);
-	nvp->npaths += 1;
-	nvp->paths = paths;
-	return NVPIPE_SUCCESS;
-}
-
 nvp_impl_t*
 nvp_create_encoder(uint64_t bitrate) {
 	struct nvp_encoder* nvp = calloc(1, sizeof(struct nvp_encoder));
 	nvp->impl.type = ENCODER;
 	nvp->impl.encode = nvp_nvenc_encode;
 	nvp->impl.bitrate = nvp_nvenc_bitrate;
-	nvp->impl.ptx_path = nvp_ptx_path;
 	nvp->impl.decode = nvp_nvenc_decode;
 	nvp->impl.destroy = nvp_nvenc_destroy;
 	nvp->bitrate = bitrate;
@@ -877,10 +846,6 @@ nvp_create_encoder(uint64_t bitrate) {
 		return NULL;
 	}
 	assert(nvp->encoder);
-
-	/* These paths are used to search for PTX files. */
-	assert(nvp->paths == NULL);
-	nvp->paths = module_paths(&nvp->npaths);
 
 	// We can't initialize until we know resolution, which only comes on encode.
 	nvp->initialized = false;

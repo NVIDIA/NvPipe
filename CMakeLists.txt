@@ -68,10 +68,6 @@ include_directories(${PROJECT_SOURCE_DIR} ${CUDA_SDK_ROOT_DIR}/common/inc)
 link_directories("${CUDA_TOOLKIT_ROOT_DIR}/lib64")
 link_directories("${CMAKE_INSTALL_PREFIX}/lib")
 
-cuda_compile_ptx(ptxprograms
-  convert.cu
-)
-
 option(USE_FFMPEG "Enable ffmpeg-based backend." OFF)
 set(NvPipe_FFMPEG 0)
 
@@ -121,14 +117,13 @@ endif(MSVC)
 cuda_add_library(${NVPIPE} SHARED
   ${FFMPEG_SOURCES}
   ${winsrc}
+  ${PROJECT_SOURCE_DIR}/convert.cu
   ${PROJECT_SOURCE_DIR}/debug.c
   ${PROJECT_SOURCE_DIR}/decode.c
   ${PROJECT_SOURCE_DIR}/encode.c
   ${PROJECT_SOURCE_DIR}/error.c
-  ${PROJECT_SOURCE_DIR}/module.c
   ${PROJECT_SOURCE_DIR}/yuv.c
   ${PROJECT_SOURCE_DIR}/api.c
-  ${ptxprograms}
   SHARED
 )
 
@@ -176,7 +171,6 @@ install(TARGETS ${NVPIPE}
   LIBRARY DESTINATION lib COMPONENT shlib
   PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_PREFIX}/include"
 )
-install(FILES ${PROJECT_BINARY_DIR}/convert.ptx DESTINATION share/nvpipe)
 install(FILES "${project_config}" DESTINATION lib/cmake/${NVPIPE})
 install(EXPORT nvpipeTargets DESTINATION lib/cmake/${NVPIPE} COMPONENT dev)
 install(EXPORT nvpipeTargets DESTINATION lib/cmake/${NVPIPE})
