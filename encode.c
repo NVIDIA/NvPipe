@@ -411,6 +411,8 @@ nvp_allocate_buffers(struct nvp_encoder* nvp, size_t width, size_t height) {
 
 	CUresult cuerr;
 	nvp->nv12.pitch = 0;
+	/* NV12 format is width*height elements for Y, (width/2)*(height/2) elements
+	 * for U, and (width/2)*(height/2) elements for V, thus the height*3/2. */
 	cuerr = cudaMallocPitch((void**)&nvp->nv12.buf, &nvp->nv12.pitch, width,
 	                        height*3/2);
 	if(CUDA_SUCCESS != cuerr) {
