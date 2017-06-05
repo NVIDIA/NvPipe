@@ -53,8 +53,6 @@ static const char* const NVENC_LIB = "nvEncodeAPI.dll";
 #else
 static const char* const NVENC_LIB = "libnvidia-encode.so.1";
 #endif
-static const size_t MAX_WIDTH = 4096;
-static const size_t MAX_HEIGHT = 4096;
 
 DECLARE_CHANNEL(enc);
 
@@ -81,6 +79,8 @@ struct nvp_encoder {
 	 * we just convert /everything/ to nv12.
 	 * This "future" implements the conversion.  See yuv.[ch]. */
 	nv_fut_t* reorg;
+	uint32_t max_width; /* Max encoder width supported by HW+SDK. */
+	uint32_t max_height; /* Max encoder height supported by HW+SDK. */
 };
 
 #define CLEAR_DL_ERRORS() { \
@@ -359,8 +359,8 @@ initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	assert(height < 4294967295);
 	init.encodeWidth = init.darWidth = (uint32_t)width;
 	init.encodeHeight = init.darHeight = (uint32_t)height;
-	init.maxEncodeWidth = MAX_WIDTH; /* We may resize up to this later. */
-	init.maxEncodeHeight = MAX_HEIGHT;
+	init.maxEncodeWidth = nvp->max_width; /* We may resize up to this later. */
+	init.maxEncodeHeight = nvp->max_height;
 	init.frameRateNum = 30;
 	init.frameRateDen = 1;
 	/* Async (that is, setting this to 1) is only supported on windows.
@@ -444,7 +444,7 @@ enc_initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	if(!register_resource(nvp, width, height, nvp->nv12.buf)) {
 		return false;
 	}
-	
+
 	nvp->width = width;
 	nvp->height = height;
 	nvp->initialized = true;
@@ -472,8 +472,8 @@ nvp_resize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	init.presetGUID = NV_ENC_PRESET_LOW_LATENCY_HQ_GUID;
 	init.encodeWidth = init.darWidth = width;
 	init.encodeHeight = init.darHeight = height;
-	init.maxEncodeWidth = MAX_WIDTH; /* We may resize up to this later. */
-	init.maxEncodeHeight = MAX_HEIGHT;
+	init.maxEncodeWidth = nvp->max_width; /* We may resize up to this later. */
+	init.maxEncodeHeight = nvp->max_height;
 	init.frameRateNum = 30;
 	init.frameRateDen = 1;
 	/* Async (that is, setting this to 1) is only supported on windows.
@@ -762,8 +762,8 @@ nvp_nvenc_bitrate(nvpipe* codec, uint64_t bitrate) {
 	init.presetGUID = NV_ENC_PRESET_LOW_LATENCY_HQ_GUID;
 	init.encodeWidth = init.darWidth = nvp->width;
 	init.encodeHeight = init.darHeight = nvp->height;
-	init.maxEncodeWidth = MAX_WIDTH; /* We may resize up to this later. */
-	init.maxEncodeHeight = MAX_HEIGHT;
+	init.maxEncodeWidth = nvp->max_width; /* We may resize up to this later. */
+	init.maxEncodeHeight = nvp->max_height;
 	init.frameRateNum = 30;
 	init.frameRateDen = 1;
 	/* Async (that is, setting this to 1) is only supported on windows.
@@ -784,6 +784,46 @@ nvp_nvenc_bitrate(nvpipe* codec, uint64_t bitrate) {
 	}
 
 	return errcode;
+}
+
+/* The SDK supports multiple possible encoder configurations, denoted by GUIDs.
+ * This iterates through the given GUIDs and identifies the max value for the
+ * capability given in 'what'. */
+static int
+max_cap(struct nvp_encoder* nvp, const GUID* guid, size_t nguid,
+        NV_ENC_CAPS what) {
+	NV_ENC_CAPS_PARAM caps = {0};
+	caps.version = NV_ENC_CAPS_PARAM_VER;
+	caps.capsToQuery = what;
+
+	int max = 0;
+	int v = 0;
+	for(size_t i=0; i < nguid; ++i) {
+		caps.capsToQuery = what;
+		const NVENCSTATUS cps =
+			nvp->f.nvEncGetEncodeCaps(nvp->encoder, guid[i], &caps, &v);
+		if(NV_ENC_SUCCESS != cps) {
+			WARN(enc, "error %d for encode cap %d, guid %zu: %s", cps, what, i,
+			     nvcodec_strerror(cps));
+		}
+		max = MAX(max, v);
+	}
+	return max;
+}
+
+static nvp_err_t
+query_max_dimensions(struct nvp_encoder* nvp) {
+	const GUID guid[] = {NV_ENC_CODEC_H264_GUID};
+
+	nvp->max_width = (uint32_t)max_cap(nvp, guid, 1, NV_ENC_CAPS_WIDTH_MAX);
+	nvp->max_height = (uint32_t)max_cap(nvp, guid, 1, NV_ENC_CAPS_HEIGHT_MAX);
+	TRACE(enc, "Encoder supports images up to %ux%u", nvp->max_width,
+	      nvp->max_height);
+	if(nvp->max_width == 0 || nvp->max_height == 0) {
+		return NVPIPE_EINVAL;
+	}
+
+	return NVPIPE_SUCCESS;
 }
 
 nvp_impl_t*
@@ -848,6 +888,14 @@ nvp_create_encoder(uint64_t bitrate) {
 		return NULL;
 	}
 	assert(nvp->encoder);
+
+	nvp_err_t qry = query_max_dimensions(nvp);
+	if(NVPIPE_SUCCESS != qry) {
+		ERR(enc, "Error %d querying dimensions: %s", qry, nvpipe_strerror(qry));
+		dlclose(nvp->lib);
+		free(nvp);
+		return NULL;
+	}
 
 	// We can't initialize until we know resolution, which only comes on encode.
 	nvp->initialized = false;
