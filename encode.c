@@ -174,7 +174,7 @@ unregister_resource(struct nvp_encoder* nvp) {
 		CUcontext current_ = 0x0; \
 		const CUresult res_ = cuCtxGetCurrent(&current_); \
 		if(CUDA_SUCCESS != res_) { \
-			WARN(enc, "Error getting while checking context: %d", res_); \
+			WARN(enc, "Error while checking context: %d", res_); \
 			errhandling; \
 		} \
 		if(ctx_ != current_) { \
