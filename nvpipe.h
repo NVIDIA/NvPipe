@@ -48,12 +48,12 @@ typedef enum nvpipe_format {
 
 /* Avoid a dependency on cuda.h by copying these definitions here. */
 #define cuda_SUCCESS 0
-#define cuda_ERROR_INVALID_VALUE 1
+#define cuda_ERROR_INVALID_VALUE 11
 #define cuda_ERROR_OUT_OF_MEMORY 2
-#define cuda_ERROR_MAP_FAILED 205
-#define cuda_ERROR_UNMAP_FAILED 206
-#define cuda_ERROR_FILE_NOT_FOUND 301
-#define cuda_ERROR_UNKNOWN 999
+#define cuda_ERROR_MAP_FAILED 14
+#define cuda_ERROR_UNMAP_FAILED 15
+#define cuda_ERROR_FILE_NOT_FOUND 33
+#define cuda_ERROR_UNKNOWN 10000
 
 /** NvPipe error codes are a superset of the CUDA error codes.  See
  * nvpipe_strerror. */

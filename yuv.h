@@ -28,17 +28,17 @@
 #define NVPIPE_YUV_H
 
 #include <stdbool.h>
-#include <cuda.h>
+#include <cuda_runtime_api.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef CUresult (fut_fqn_submit)(void* obj, const CUdeviceptr src,
-                                  size_t width, size_t height, CUdeviceptr dst,
-                                  unsigned pitch);
-typedef CUresult (fut_fqn_sync)(void*);
-typedef CUstream (fut_fqn_stream)(const void*);
+typedef cudaError_t (fut_fqn_submit)(void* obj, const CUdeviceptr src,
+                                     size_t width, size_t height, CUdeviceptr dst,
+                                     unsigned pitch);
+typedef cudaError_t (fut_fqn_sync)(void*);
+typedef cudaStream_t (fut_fqn_stream)(const void*);
 typedef void (fut_fqn_destroy)(void*);
 
 /** Future abstraction for data reorganization/conversion.
@@ -68,7 +68,7 @@ typedef struct cu_convert_future {
 	/** Clean up internal resources. */
 	fut_fqn_destroy* destroy;
 	/** The stream work will be submitted under. */
-	CUstream strm;
+	cudaStream_t strm;
 } nv_fut_t;
 
 /** a future that reorganizes RGB[A] data into nv12 data.

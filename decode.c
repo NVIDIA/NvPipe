@@ -363,9 +363,9 @@ reorganize(struct nvp_decoder* nvp, CUdeviceptr nv12,
 		dstbuf = (CUdeviceptr)obuf;
 	}
 	assert(nvp->reorg);
-	const CUresult sub = nvp->reorg->submit(nvp->reorg, nv12, width, height,
-	                                        (CUdeviceptr)dstbuf, pitch);
-	if(CUDA_SUCCESS != sub) {
+	const cudaError_t sub = nvp->reorg->submit(nvp->reorg, nv12, width, height,
+	                                           (CUdeviceptr)dstbuf, pitch);
+	if(cudaSuccess != sub) {
 		ERR(dec, "reorganization kernel failed: %d", sub);
 		return sub;
 	}
@@ -383,8 +383,8 @@ reorganize(struct nvp_decoder* nvp, CUdeviceptr nv12,
 		}
 	}
 
-	const CUresult synch = nvp->reorg->sync(nvp->reorg);
-	if(CUDA_SUCCESS != synch) {
+	const cudaError_t synch = nvp->reorg->sync(nvp->reorg);
+	if(cudaSuccess != synch) {
 		ERR(dec, "reorganization sync failed: %d", synch);
 		return synch;
 	}

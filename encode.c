@@ -403,19 +403,19 @@ nvp_allocate_buffers(struct nvp_encoder* nvp, size_t width, size_t height) {
 	assert(nvp->nv12.buf == 0);
 
 	const size_t nbytes_rgba = width*height*4;
-	const CUresult rgberr = cudaMalloc((void**)&nvp->rgb, nbytes_rgba);
-	if(CUDA_SUCCESS != rgberr) {
+	const cudaError_t rgberr = cudaMalloc((void**)&nvp->rgb, nbytes_rgba);
+	if(cudaSuccess != rgberr) {
 		ERR(enc, "error allocating chroma mem: %d", rgberr);
 		return false;
 	}
 
-	CUresult cuerr;
+	cudaError_t cuerr;
 	nvp->nv12.pitch = 0;
 	/* NV12 format is width*height elements for Y, (width/2)*(height/2) elements
 	 * for U, and (width/2)*(height/2) elements for V, thus the height*3/2. */
 	cuerr = cudaMallocPitch((void**)&nvp->nv12.buf, &nvp->nv12.pitch, width,
 	                        height*3/2);
-	if(CUDA_SUCCESS != cuerr) {
+	if(cudaSuccess != cuerr) {
 		ERR(enc, "error allocating pitched memory: %d", cuerr);
 		cudaFree((void*)nvp->rgb);
 		nvp->rgb = 0;
@@ -557,9 +557,9 @@ reorganize(struct nvp_encoder* nvp, const void* rgb,
 		src = (const void*)nvp->rgb;
 	}
 
-	CUresult org = nvp->reorg->submit(nvp->reorg, (CUdeviceptr)src, width, height,
-	                                  nvp->nv12.buf, nvp->nv12.pitch);
-	if(CUDA_SUCCESS != org) {
+	cudaError_t org = nvp->reorg->submit(nvp->reorg, (CUdeviceptr)src, width,
+	                                     height, nvp->nv12.buf, nvp->nv12.pitch);
+	if(cudaSuccess != org) {
 		return org;
 	}
 
@@ -568,7 +568,7 @@ reorganize(struct nvp_encoder* nvp, const void* rgb,
 	 * we're going to EncodePicture / MapInputResource as soon as we return from
 	 * this, and neither of those APIs accept stream parameters. */
 	org = nvp->reorg->sync(nvp->reorg);
-	if(CUDA_SUCCESS != org) {
+	if(cudaSuccess != org) {
 		return org;
 	}
 	return cudaSuccess;

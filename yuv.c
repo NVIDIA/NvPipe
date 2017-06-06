@@ -38,11 +38,11 @@
 
 DECLARE_CHANNEL(yuv);
 
-static CUresult
+static cudaError_t
 strm_sync(void* f) {
 	nv_fut_t* fut = (nv_fut_t*)f;
-	const CUresult sy = cuStreamSynchronize(fut->strm);
-	if(CUDA_SUCCESS != sy) {
+	const cudaError_t sy = cudaStreamSynchronize(fut->strm);
+	if(cudaSuccess != sy) {
 		ERR(yuv, "Error %d synchronizing stream", sy);
 	}
 	return sy;
@@ -54,8 +54,8 @@ strm_destroy(void* f) {
 		return;
 	}
 	nv_fut_t* fut = (nv_fut_t*)f;
-	const CUresult del = cuStreamDestroy(fut->strm);
-	if(CUDA_SUCCESS != del) {
+	const cudaError_t del = cudaStreamDestroy(fut->strm);
+	if(cudaSuccess != del) {
 		WARN(yuv, "Error %d destroying stream.", del);
 	}
 	fut->strm = 0;
@@ -67,8 +67,9 @@ strm_create() {
 	rv.sync = strm_sync;
 	rv.destroy = strm_destroy;
 
-	const CUresult cuerr = cuStreamCreate(&rv.strm, CU_STREAM_NON_BLOCKING);
-	if(cuerr != CUDA_SUCCESS) {
+	const cudaError_t cuerr = cudaStreamCreateWithFlags(&rv.strm,
+	                                                    cudaStreamNonBlocking);
+	if(cudaSuccess != cuerr) {
 		ERR(yuv, "Error %d creating stream.", cuerr);
 		return rv;
 	}
@@ -84,7 +85,7 @@ extern cudaError_t
 launch_rgb2yuv(CUdeviceptr rgb, size_t width, size_t height, size_t ncomp,
                CUdeviceptr nv12, unsigned pitch, cudaStream_t strm);
 
-static CUresult
+static cudaError_t
 rgb2yuv_submit(void* conv, const CUdeviceptr rgb, size_t width, size_t height,
                CUdeviceptr nv12, unsigned pitch) {
 	rgb2yuv_t* cnv = (rgb2yuv_t*)conv;
@@ -124,7 +125,7 @@ extern cudaError_t
 launch_yuv2rgb(CUdeviceptr nv12, size_t width, size_t height, unsigned pitch,
                CUdeviceptr rgb, cudaStream_t strm);
 
-static CUresult
+static cudaError_t
 yuv2rgb_submit(void* y, const CUdeviceptr nv12, size_t width, size_t height,
                CUdeviceptr rgb, unsigned pitch) {
 	yuv2rgb_t* conv = (yuv2rgb_t*)y;
