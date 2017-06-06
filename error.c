@@ -30,7 +30,7 @@ struct errstr {
 	nvp_err_t code;
 	const char* msg;
 };
-static struct errstr nvp_errors[] = {
+static const struct errstr nvp_errors[] = {
 	{ NVPIPE_SUCCESS, "success" },
 	{ NVPIPE_EINVAL, "invalid value"},
 	{ NVPIPE_ENOMEM, "out of memory"},
