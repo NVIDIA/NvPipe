@@ -284,32 +284,6 @@ initialize_parser(struct nvp_decoder* nvp) {
 	return NVPIPE_SUCCESS;
 }
 
-/* There is some initialization that we either cannot or do not want to do when
- * the client creates the decoder.
- * Parser initialization is one: it can be quite slow and furthermore eat a lot
- * of resources, so we want to allocate it lazily.
- * The second is our reorganization code.  We can't initialize that during the
- * create(), because we need to give the user a chance to add paths to find the
- * generated PTX files. */
-static nvp_err_t
-initialize(struct nvp_decoder* nvp) {
-	if(NULL == nvp->parser) {
-		const nvp_err_t perr = initialize_parser(nvp);
-		if(NVPIPE_SUCCESS != perr) {
-			return perr;
-		}
-	}
-
-	if(NULL == nvp->reorg) {
-		nvp->reorg = nv122rgb();
-		if(NULL == nvp->reorg) {
-			return NVPIPE_ENOENT;
-		}
-	}
-
-	return NVPIPE_SUCCESS;
-}
-
 /** @return true if the given pointer was allocated on the device. */
 static bool
 is_device_ptr(const void* ptr) {
@@ -427,10 +401,13 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	assert(ibuf);
 	assert(obuf);
 
-	/* Do any required dynamic initialization. */
-	const nvp_err_t initerr = initialize(nvp);
-	if(NVPIPE_SUCCESS != initerr) {
-		return initerr;
+	/* dynamically init our parser: it can be quite slow and eat a lot of
+	 * resources, so it's preferable to allocate it lazily. */
+	if(NULL == nvp->parser) {
+		const nvp_err_t perr = initialize_parser(nvp);
+		if(NVPIPE_SUCCESS != perr) {
+			return perr;
+		}
 	}
 
 	/* cuvid needs host mem. if the input isn't host mem, use an internal staging
@@ -562,6 +539,13 @@ nvp_create_decoder() {
 		cudaEventCreateWithFlags(&nvp->ready, cudaEventDisableTiming);
 	if(cudaSuccess != cuerr) {
 		ERR(dec, "could not create sync event: %d", cuerr);
+		free(nvp);
+		return NULL;
+	}
+
+	nvp->reorg = nv122rgb();
+	if(NULL == nvp->reorg) {
+		ERR(dec, "could not create internal reorganization object");
 		free(nvp);
 		return NULL;
 	}
