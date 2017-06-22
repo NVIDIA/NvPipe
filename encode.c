@@ -64,8 +64,8 @@ struct nvp_encoder {
 	CUcontext ctx;
 	void* encoder; /**< the nvEnc opaque object */
 	bool initialized;
-	size_t width;
-	size_t height;
+	uint32_t width;
+	uint32_t height;
 	CUdeviceptr rgb; /* GPU copy of input buffer.  Might actually be RGBA. */
 	struct {
 		size_t pitch;
@@ -240,7 +240,7 @@ nvp_nvenc_destroy(nvpipe* const __restrict cdc) {
 
 /* Registers the memory 'mem' with the encoder. */
 static bool
-register_resource(struct nvp_encoder* nvp, size_t width, size_t height,
+register_resource(struct nvp_encoder* nvp, uint32_t width, uint32_t height,
                   CUdeviceptr mem) {
 	NV_ENC_REGISTER_RESOURCE resc = {0};
 	resc.version = NV_ENC_REGISTER_RESOURCE_VER;
@@ -341,7 +341,7 @@ nvp_config(const struct nvp_encoder* __restrict nvp) {
 }
 
 static bool
-initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
+initialize(struct nvp_encoder* nvp, uint32_t width, uint32_t height) {
 	assert(nvp->initialized == false);
 	NV_ENC_CONFIG cfg = nvp_config(nvp);
 
@@ -355,10 +355,8 @@ initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	 * It has little to do with execution time, mostly affects the encoder's
 	 * use of B-frames. */
 	init.presetGUID = NV_ENC_PRESET_LOW_LATENCY_HQ_GUID;
-	assert(width < 4294967295);
-	assert(height < 4294967295);
-	init.encodeWidth = init.darWidth = (uint32_t)width;
-	init.encodeHeight = init.darHeight = (uint32_t)height;
+	init.encodeWidth = init.darWidth = width;
+	init.encodeHeight = init.darHeight = height;
 	init.maxEncodeWidth = nvp->max_width; /* We may resize up to this later. */
 	init.maxEncodeHeight = nvp->max_height;
 	init.frameRateNum = 30;
@@ -379,7 +377,7 @@ initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
 /* Create a bitstream buffer.  NvCodec requires one to output into; it can't take
  * just a raw pointer. */
 static bool
-create_bitstream(struct nvp_encoder* nvp, size_t width, size_t height,
+create_bitstream(struct nvp_encoder* nvp, uint32_t width, uint32_t height,
                  NV_ENC_OUTPUT_PTR* bstream) {
 	NV_ENC_CREATE_BITSTREAM_BUFFER bb = {0};
 	bb.version = NV_ENC_CREATE_BITSTREAM_BUFFER_VER;
@@ -429,12 +427,12 @@ nvp_allocate_buffers(struct nvp_encoder* nvp, size_t width, size_t height) {
  * width/height (which by our API we only get when they call encode),
  * else this would just be inline in the create function. */
 static bool
-enc_initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
+enc_initialize(struct nvp_encoder* nvp, uint32_t width, uint32_t height) {
 	if(initialize(nvp, width, height) == false) {
 		return false;
 	}
 
-	if(!nvp_allocate_buffers(nvp, width, height)) {
+	if(!nvp_allocate_buffers(nvp, (size_t)width, (size_t)height)) {
 		return false;
 	}
 
@@ -452,7 +450,7 @@ enc_initialize(struct nvp_encoder* nvp, size_t width, size_t height) {
 }
 
 static bool
-nvp_resize(struct nvp_encoder* nvp, size_t width, size_t height) {
+nvp_resize(struct nvp_encoder* nvp, uint32_t width, uint32_t height) {
 	assert(nvp->initialized && "Must have previously initialized encoder.");
 	/* Don't do anything if we're resizing to the same width/height. */
 	if(nvp->width == width && nvp->height == height) {
@@ -506,7 +504,7 @@ nvp_resize(struct nvp_encoder* nvp, size_t width, size_t height) {
 	nvp->nv12.buf = 0;
 	nvp->nv12.pitch = 0;
 
-	if(!nvp_allocate_buffers(nvp, width, height)) {
+	if(!nvp_allocate_buffers(nvp, (size_t)width, (size_t)height)) {
 		return false;
 	}
 	if(!create_bitstream(nvp, width, height, &nvp->nv12.bstream)) {
@@ -601,7 +599,7 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
                  const size_t ibuf_sz,
                  void *const __restrict obuf,
                  size_t* const __restrict obuf_sz,
-                 const size_t width, const size_t height,
+                 const uint32_t width, const uint32_t height,
                  nvp_fmt_t format) {
 	struct nvp_encoder* nvp = (struct nvp_encoder*)codec;
 	assert(nvp);
@@ -611,8 +609,8 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 		return NVPIPE_EINVAL;
 	}
 	const size_t multiplier = format == NVPIPE_RGB ? 3 : 4;
-	if(ibuf_sz < sizeof(uint8_t)*multiplier*width*height) {
-		ERR(enc, "Input buffer is too small (%zu bytes) for %zux%zu "
+	if(ibuf_sz < sizeof(uint8_t)*multiplier*(size_t)width*(size_t)height) {
+		ERR(enc, "Input buffer is too small (%zu bytes) for %ux%u "
 		    "RGB[a] image.", ibuf_sz, width, height);
 		return NVPIPE_EINVAL;
 	}
@@ -630,7 +628,8 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 		nvp_resize(nvp, width, height);
 	}
 
-	const cudaError_t rerr = reorganize(nvp, ibuf, width, height, multiplier);
+	const cudaError_t rerr = reorganize(nvp, ibuf, (size_t)width, (size_t)height,
+	                                    multiplier);
 	if(rerr != cudaSuccess) {
 		return rerr;
 	}
@@ -730,8 +729,8 @@ nvp_err_t
 nvp_nvenc_decode(nvpipe* const __restrict codec,
                  const void* const __restrict ibuf, const size_t ibuf_sz,
                  void* const __restrict obuf,
-                 size_t width,
-                 size_t height) {
+                 uint32_t width,
+                 uint32_t height) {
 	(void)codec; (void)ibuf; (void)ibuf_sz;
 	(void)obuf;
 	(void)width; (void)height;

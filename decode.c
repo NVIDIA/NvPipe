@@ -110,19 +110,21 @@ dec_initialize(struct nvp_decoder* nvp, size_t iwidth, size_t iheight,
 	assert(nvp->decoder == NULL);
 	CUVIDDECODECREATEINFO crt = {0};
 	crt.CodecType = cudaVideoCodec_H264;
-	crt.ulWidth = iwidth;
-	crt.ulHeight = iheight;
+	crt.ulWidth = (unsigned long)iwidth;
+	crt.ulHeight = (unsigned long)iheight;
 	nvp->d.wi = iwidth;
 	nvp->d.hi = iheight;
 	crt.ulNumDecodeSurfaces = 2;
 	crt.ChromaFormat = cudaVideoChromaFormat_420;
 	crt.OutputFormat = cudaVideoSurfaceFormat_NV12;
 	crt.DeinterlaceMode = cudaVideoDeinterlaceMode_Adaptive;
-	crt.ulTargetWidth = dstwidth;
-	crt.ulTargetHeight = dstheight;
+	crt.ulTargetWidth = (unsigned long)dstwidth;
+	crt.ulTargetHeight = (unsigned long)dstheight;
 	crt.display_area.left = crt.display_area.top = 0;
-	crt.display_area.right = iwidth;
-	crt.display_area.bottom = iheight;
+	assert(iwidth <= 65535);
+	assert(iheight <= 65535);
+	crt.display_area.right = (short)iwidth;
+	crt.display_area.bottom = (short)iheight;
 	crt.ulNumOutputSurfaces = 1;
 	crt.ulCreationFlags = cudaVideoCreate_PreferCUVID;
 	crt.vidLock = NULL;
@@ -384,7 +386,7 @@ nvp_cuvid_decode(nvpipe* const cdc,
                  const void* const __restrict ibuf,
                  const size_t ibuf_sz,
                  void* const __restrict obuf,
-                 size_t width, size_t height) {
+                 uint32_t width, uint32_t height) {
 	struct nvp_decoder* nvp = (struct nvp_decoder*)cdc;
 	if(nvp->impl.type != DECODER) {
 		ERR(dec, "backend implementation configuration error");
@@ -448,7 +450,7 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	 * One could optimize the scaling cases by potentially reusing the buffer,
 	 * technically. */
 	if(nvp->d.wsrc != nvp->d.wi || nvp->d.hsrc != nvp->d.hi ||
-	   nvp->d.wdst != width || nvp->d.hdst != height) {
+	   nvp->d.wdst != (size_t)width || nvp->d.hdst != (size_t)height) {
 		resize(nvp, nvp->d.wsrc, nvp->d.hsrc, width, height);
 		return nvp_cuvid_decode(cdc, ibuf, ibuf_sz, obuf, width, height);
 	}
@@ -503,7 +505,7 @@ nvp_cuvid_encode(nvpipe * const __restrict codec,
                  const size_t ibuf_sz,
                  void *const __restrict obuf,
                  size_t* const __restrict obuf_sz,
-                 const size_t width, const size_t height,
+                 const uint32_t width, const uint32_t height,
                  nvp_fmt_t format) {
 	(void)codec; (void)ibuf; (void)ibuf_sz;
 	(void)obuf; (void)obuf_sz;

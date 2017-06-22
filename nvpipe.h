@@ -137,7 +137,7 @@ nvpipe_encode(nvpipe * const __restrict codec,
               const size_t ibuf_sz,
               void *const __restrict obuf,
               size_t* const __restrict obuf_sz,
-              const size_t width, const size_t height,
+              const uint32_t width, const uint32_t height,
               nvp_fmt_t format);
 
 /** Adjust the bitrate used for an encoder.  The setting takes effect for
@@ -169,8 +169,8 @@ nvpipe_decode(nvpipe* const __restrict codec,
               const void* const __restrict ibuf,
               const size_t ibuf_sz,
               void* const __restrict obuf,
-              size_t width,
-              size_t height);
+              uint32_t width,
+              uint32_t height);
 
 /** Retrieve human-readable error message for the given error code.  Note that
  * this is a pointer to constant memory that must NOT be freed or manipulated
