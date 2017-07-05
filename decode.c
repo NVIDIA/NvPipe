@@ -62,11 +62,6 @@ struct nvp_decoder {
 	CUvideodecoder decoder;
 	CUvideoparser parser;
 	cudaEvent_t ready;
-	/** Source data may be on the device or the host.  However, cuvid only
-	 * accepts host data.  If data come in on the device, we'll use this
-	 * as a staging buffer for cuvid's input. */
-	void* hbuf;
-	size_t hbuf_sz;
 	/** Most of the the logic in this file is related to sizing.  There are
 	 * multiple sizes: 1) The size we expected images to be when creating the
 	 * decoder; 2) the size the user wanted when creating the decoder; 3) the size
@@ -194,9 +189,6 @@ nvp_cuvid_destroy(nvpipe* const __restrict cdc) {
 	if(cudaSuccess != cudaEventDestroy(nvp->ready)) {
 		WARN(dec, "Error destroying sync event.");
 	}
-
-	free(nvp->hbuf);
-	nvp->hbuf_sz = 0;
 }
 
 static int
@@ -294,39 +286,6 @@ is_device_ptr(const void* ptr) {
 	return perr == cudaSuccess && attr.devicePointer != NULL;
 }
 
-/* Our decoder accepts input data from either the device or the host.  However,
- * nvcuvid only accepts host data.  Thus we copy the data to a host buffer to
- * satisfy the cuvid API.
- * To avoid an allocation every time the user submits a frame, we keep a small
- * host buffer in the decode object and reuse it for every submission.
- * @returns the host pointer to use for source data, which will be one of the
- *          user's host pointer OR our internal buffer. */
-static const void*
-source_data(struct nvp_decoder* nvp, const void* ibuf, const size_t ibuf_sz) {
-	const void* srcbuf = ibuf;
-	if(is_device_ptr(ibuf)) {
-		if(ibuf_sz > nvp->hbuf_sz) {
-			void* buf = realloc(nvp->hbuf, ibuf_sz);
-			if(buf == NULL) {
-				ERR(dec, "allocation failure of %zu-byte temp host buffer", ibuf_sz);
-				return NULL;
-			}
-			nvp->hbuf = buf;
-			nvp->hbuf_sz = ibuf_sz;
-		}
-		assert(nvp->hbuf_sz >= ibuf_sz);
-		const cudaError_t hcpy = cudaMemcpy(nvp->hbuf, ibuf, ibuf_sz,
-		                                    cudaMemcpyDeviceToHost);
-		if(hcpy != cudaSuccess) {
-			ERR(dec, "copy to temp host buffer failed: %d", hcpy);
-			return NULL;
-		}
-		srcbuf = nvp->hbuf;
-	}
-
-	return srcbuf;
-}
-
 /* reorganize the data from 'nv12' into 'obuf'. */
 static nvp_err_t
 reorganize(struct nvp_decoder* nvp, CUdeviceptr nv12,
@@ -400,6 +359,10 @@ nvp_cuvid_decode(nvpipe* const cdc,
 		ERR(dec, "invalid width or height");
 		return NVPIPE_EINVAL;
 	}
+	if(is_device_ptr(ibuf)) {
+		ERR(dec, "input buffer is a device pointer; need host memory.");
+		return NVPIPE_EINVAL;
+	}
 	assert(ibuf);
 	assert(obuf);
 
@@ -412,16 +375,9 @@ nvp_cuvid_decode(nvpipe* const cdc,
 		}
 	}
 
-	/* cuvid needs host mem. if the input isn't host mem, use an internal staging
-	 * buffer. */
-	const void* srcbuf = source_data(nvp, ibuf, ibuf_sz);
-	if(srcbuf == NULL) {
-		return NVPIPE_ENOMEM;
-	}
-
 	CUVIDSOURCEDATAPACKET pkt = {0};
 	pkt.payload_size = ibuf_sz;
-	pkt.payload = srcbuf;
+	pkt.payload = ibuf;
 	nvtxRangePush("cuvid parse video data");
 	const CUresult parse = cuvidParseVideoData(nvp->parser, &pkt);
 	nvtxRangePop();

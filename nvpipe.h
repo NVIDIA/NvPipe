@@ -155,7 +155,7 @@ nvp_err_t nvpipe_bitrate(nvpipe* const enc, uint64_t bitrate);
 /** decode/decompress a frame
  *
  * @param[in] codec instance variable
- * @param[in] ibuf the compressed frame, on the host or the device.
+ * @param[in] ibuf the compressed frame, on the host.
  * @param[in] ibuf_sz  the size in bytes of the compressed data
  * @param[out] obuf where the output RGB frame will be written.
  *             must be at least width*height*3 bytes. host or device pointer.
