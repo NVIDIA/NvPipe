@@ -62,7 +62,14 @@ endif()
 include_directories(BEFORE "${PROJECT_BINARY_DIR}")
 
 find_package(CUDA REQUIRED)
-list(APPEND CUDA_NVCC_FLAGS "--std c++11")
+
+cmake_policy(SET CMP0057 NEW)
+if(NOT MSVC)
+  if(NOT "--std" IN_LIST CUDA_NVCC_FLAGS)
+    list(APPEND CUDA_NVCC_FLAGS "--std c++11")
+  endif()
+endif()
+
 list(APPEND CUDA_NVCC_FLAGS "-Wno-deprecated-gpu-targets")
 
 include_directories(${PROJECT_SOURCE_DIR} ${CUDA_SDK_ROOT_DIR}/common/inc)
