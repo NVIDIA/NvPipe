@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
+/* Copyright (c) 2016-2017, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,6 +24,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/*
+ * Performance note: Typically the color space conversions take up a
+ * negligible amount of run time. The following kernels have therefore
+ * not been optimized.
+ */
+
 #include <cassert>
 #include <cstddef>
 #include <cinttypes>
@@ -56,12 +63,12 @@ rgb2v(const uint8_t r, const uint8_t g, const uint8_t b) {
  * and subsampled 2x2.  Note the RGB data are not pitched. */
 extern "C" __global__ void
 rgb2yuv(const uint8_t* const __restrict rgb,
-        const size_t width, const size_t height, const size_t c/*omponents*/,
+        const uint32_t width, const uint32_t height, const uint32_t c/*omponents*/,
         uint8_t* const __restrict yuv, unsigned pitch) {
-	const size_t x = blockIdx.x*blockDim.x + threadIdx.x;
-	const size_t y = blockIdx.y*blockDim.y + threadIdx.y;
-	const size_t i = y*pitch + x;
-	const size_t j = y*width + x;
+	const uint32_t x = blockIdx.x*blockDim.x + threadIdx.x;
+	const uint32_t y = blockIdx.y*blockDim.y + threadIdx.y;
+	const uint32_t i = y*pitch + x;
+	const uint32_t j = y*width + x;
 	if(x >= width || y >= height || i >= pitch*height || j >= width*height) {
 		return;
 	}
@@ -81,8 +88,8 @@ rgb2yuv(const uint8_t* const __restrict rgb,
 		return;
 	}
 	uint8_t* __restrict uv = yuv + pitch*height;
-	const size_t uvidx = y/2*(pitch/2) + x/2;
-	const size_t idx[4] = {
+	const uint32_t uvidx = y/2*(pitch/2) + x/2;
+	const uint32_t idx[4] = {
 		min((y+0)*width + x+0, width*height),
 		min((y+0)*width + x+1, width*height),
 		min((y+1)*width + x+0, width*height),
@@ -122,12 +129,12 @@ yuv2b(const uint8_t y, const uint8_t u, const uint8_t v) {
 /* Convert back from NV12 to RGB.   Note the RGB buffer is not pitched. */
 extern "C" __global__ void
 yuv2rgb(const uint8_t* const __restrict yuv,
-        const size_t width, const size_t height, unsigned pitch,
+        const uint32_t width, const uint32_t height, unsigned pitch,
         uint8_t* const __restrict rgb) {
-	const size_t x = blockIdx.x*blockDim.x + threadIdx.x;
-	const size_t y = blockIdx.y*blockDim.y + threadIdx.y;
-	const size_t i = y*pitch + x;
-	const size_t j = y*width + x;
+	const uint32_t x = blockIdx.x*blockDim.x + threadIdx.x;
+	const uint32_t y = blockIdx.y*blockDim.y + threadIdx.y;
+	const uint32_t i = y*pitch + x;
+	const uint32_t j = y*width + x;
 	if(x >= width || y >= height || i >= pitch*height || j >= width*height) {
 		return;
 	}
@@ -138,9 +145,9 @@ yuv2rgb(const uint8_t* const __restrict yuv,
 	assert(pitch <= 4096);
 	const uint8_t* __restrict Y = yuv;
 	const uint8_t* __restrict uv = yuv + pitch*height;
-	const size_t xx = min(x+1, (size_t)(width-1));
-	const size_t yy = min(y+1, height-1);
-	const size_t idx[4] = {
+	const uint32_t xx = min(x+1, width-1);
+	const uint32_t yy = min(y+1, height-1);
+	const uint32_t idx[4] = {
 		y/2*pitch/2 + x/2,
 		y/2*pitch/2 + xx/2,
 		yy/2*pitch/2 + x/2,
@@ -167,7 +174,7 @@ yuv2rgb(const uint8_t* const __restrict yuv,
 }
 
 extern "C" cudaError_t
-launch_yuv2rgb(CUdeviceptr nv12, size_t width, size_t height, unsigned pitch,
+launch_yuv2rgb(CUdeviceptr nv12, uint32_t width, uint32_t height, unsigned pitch,
                CUdeviceptr rgb, cudaStream_t strm) {
 	/* NvCodec maxes out at 8k anyway. */
 	assert(width <= 8192);
@@ -185,7 +192,7 @@ launch_yuv2rgb(CUdeviceptr nv12, size_t width, size_t height, unsigned pitch,
 }
 
 extern "C" cudaError_t
-launch_rgb2yuv(CUdeviceptr rgb, size_t width, size_t height, size_t ncomp,
+launch_rgb2yuv(CUdeviceptr rgb, uint32_t width, uint32_t height, uint32_t ncomp,
                CUdeviceptr nv12, unsigned pitch, cudaStream_t strm) {
 	/* NvCodec maxes out at 8k anyway. */
 	assert(width <= 8192);

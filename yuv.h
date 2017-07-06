@@ -35,7 +35,7 @@ extern "C" {
 #endif
 
 typedef cudaError_t (fut_fqn_submit)(void* obj, const CUdeviceptr src,
-                                     size_t width, size_t height, CUdeviceptr dst,
+                                     uint32_t width, uint32_t height, CUdeviceptr dst,
                                      unsigned pitch);
 typedef cudaError_t (fut_fqn_sync)(void*);
 typedef cudaStream_t (fut_fqn_stream)(const void*);
@@ -73,7 +73,7 @@ typedef struct cu_convert_future {
 
 /** a future that reorganizes RGB[A] data into nv12 data.
  * @param components the number of components: 3 or 4. */
-nv_fut_t* rgb2nv12(size_t components);
+nv_fut_t* rgb2nv12(uint32_t components);
 /** a future that reorganizes nv12 data into RGB data. */
 nv_fut_t* nv122rgb();
 

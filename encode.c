@@ -396,7 +396,7 @@ create_bitstream(struct nvp_encoder* nvp, uint32_t width, uint32_t height,
 
 /* Allocates internal RGB[A] and nv12 buffers. */
 static bool
-nvp_allocate_buffers(struct nvp_encoder* nvp, size_t width, size_t height) {
+nvp_allocate_buffers(struct nvp_encoder* nvp, uint32_t width, uint32_t height) {
 	assert(nvp->rgb == 0);
 	assert(nvp->nv12.buf == 0);
 
@@ -432,7 +432,7 @@ enc_initialize(struct nvp_encoder* nvp, uint32_t width, uint32_t height) {
 		return false;
 	}
 
-	if(!nvp_allocate_buffers(nvp, (size_t)width, (size_t)height)) {
+	if(!nvp_allocate_buffers(nvp, width, height)) {
 		return false;
 	}
 
@@ -504,7 +504,7 @@ nvp_resize(struct nvp_encoder* nvp, uint32_t width, uint32_t height) {
 	nvp->nv12.buf = 0;
 	nvp->nv12.pitch = 0;
 
-	if(!nvp_allocate_buffers(nvp, (size_t)width, (size_t)height)) {
+	if(!nvp_allocate_buffers(nvp, width, height)) {
 		return false;
 	}
 	if(!create_bitstream(nvp, width, height, &nvp->nv12.bstream)) {
@@ -531,7 +531,7 @@ is_device_ptr(const void* ptr) {
  * The input data must be RGB or RGBA. */
 static cudaError_t
 reorganize(struct nvp_encoder* nvp, const void* rgb,
-           const size_t width, const size_t height, const size_t ncomponents) {
+           const uint32_t width, const uint32_t height, const uint32_t ncomponents) {
 	assert(ncomponents == 3 || ncomponents == 4);
 
 	/* Create our reorganization object if we need to.  We want to do this first
@@ -608,7 +608,7 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 		ERR(enc, "NvPipe requires even heights.");
 		return NVPIPE_EINVAL;
 	}
-	const size_t multiplier = format == NVPIPE_RGB ? 3 : 4;
+	const uint32_t multiplier = format == NVPIPE_RGB ? 3 : 4;
 	if(ibuf_sz < sizeof(uint8_t)*multiplier*(size_t)width*(size_t)height) {
 		ERR(enc, "Input buffer is too small (%zu bytes) for %ux%u "
 		    "RGB[a] image.", ibuf_sz, width, height);
@@ -628,7 +628,7 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 		nvp_resize(nvp, width, height);
 	}
 
-	const cudaError_t rerr = reorganize(nvp, ibuf, (size_t)width, (size_t)height,
+	const cudaError_t rerr = reorganize(nvp, ibuf, width, height,
 	                                    multiplier);
 	if(rerr != cudaSuccess) {
 		return rerr;
@@ -789,7 +789,7 @@ nvp_nvenc_bitrate(nvpipe* codec, uint64_t bitrate) {
  * This iterates through the given GUIDs and identifies the max value for the
  * capability given in 'what'. */
 static int
-max_cap(struct nvp_encoder* nvp, const GUID* guid, size_t nguid,
+max_cap(struct nvp_encoder* nvp, const GUID* guid, uint32_t nguid,
         NV_ENC_CAPS what) {
 	NV_ENC_CAPS_PARAM caps = {0};
 	caps.version = NV_ENC_CAPS_PARAM_VER;
@@ -797,12 +797,12 @@ max_cap(struct nvp_encoder* nvp, const GUID* guid, size_t nguid,
 
 	int max = 0;
 	int v = 0;
-	for(size_t i=0; i < nguid; ++i) {
+	for(uint32_t i=0; i < nguid; ++i) {
 		caps.capsToQuery = what;
 		const NVENCSTATUS cps =
 			nvp->f.nvEncGetEncodeCaps(nvp->encoder, guid[i], &caps, &v);
 		if(NV_ENC_SUCCESS != cps) {
-			WARN(enc, "error %d for encode cap %d, guid %zu: %s", cps, what, i,
+			WARN(enc, "error %d for encode cap %d, guid %u: %s", cps, what, i,
 			     nvcodec_strerror(cps));
 		}
 		max = MAX(max, v);

@@ -51,8 +51,8 @@
 
 /* NvDec can actually do 8kx8k for HEVC, but this library does not yet
  * support that codec anyway. */
-const size_t MAX_WIDTH = 4096;
-const size_t MAX_HEIGHT = 4096;
+const uint32_t MAX_WIDTH = 4096;
+const uint32_t MAX_HEIGHT = 4096;
 
 DECLARE_CHANNEL(dec);
 
@@ -71,12 +71,12 @@ struct nvp_decoder {
 	 * also h264 only works in 16x16 blocks, so it's plausible that the stream's
 	 * dimensions may not match the output dimensions for the entire session. */
 	struct {
-		size_t wi; /**< what input/source dims Decoder was created with (1) */
-		size_t hi;
-		size_t wdst; /**< what *target* dims Decoder was created with (2) */
-		size_t hdst;
-		size_t wsrc; /**< "source" width/height: what DecodePicture says. (3) */
-		size_t hsrc;
+		uint32_t wi; /**< what input/source dims Decoder was created with (1) */
+		uint32_t hi;
+		uint32_t wdst; /**< what *target* dims Decoder was created with (2) */
+		uint32_t hdst;
+		uint32_t wsrc; /**< "source" width/height: what DecodePicture says. (3) */
+		uint32_t hsrc;
 		/* 4 is not stored here: it will be the argument to _decode. */
 	} d; /**< for "dims" */
 	CUdeviceptr rgb; /**< temporary buffer to hold converted data. */
@@ -98,8 +98,8 @@ static int dec_ode(void* cdc, CUVIDPICPARAMS* pic);
  * @param dstwidth user width; width of image the user requested
  * @param dstheight user height; height of image the user requested */
 static bool
-dec_initialize(struct nvp_decoder* nvp, size_t iwidth, size_t iheight,
-               size_t dstwidth, size_t dstheight) {
+dec_initialize(struct nvp_decoder* nvp, uint32_t iwidth, uint32_t iheight,
+               uint32_t dstwidth, uint32_t dstheight) {
 	assert(iwidth > 0 && iheight > 0);
 	assert(dstwidth > 0 && dstheight > 0);
 	assert(nvp->decoder == NULL);
@@ -159,8 +159,8 @@ dec_initialize(struct nvp_decoder* nvp, size_t iwidth, size_t iheight,
 
 /* Resizes an existing decoder. */
 void
-resize(struct nvp_decoder* nvp, size_t width, size_t height, size_t dstwidth,
-       size_t dstheight) {
+resize(struct nvp_decoder* nvp, uint32_t width, uint32_t height, uint32_t dstwidth,
+       uint32_t dstheight) {
 	if(nvp->decoder && cuvidDestroyDecoder(nvp->decoder) != CUDA_SUCCESS) {
 		ERR(dec, "Error destroying decoder");
 	}
@@ -195,9 +195,9 @@ static int
 dec_sequence(void* cdc, CUVIDEOFORMAT* fmt) {
 	struct nvp_decoder* nvp = (struct nvp_decoder*)cdc;
 	/* warn the user if the image is too large, but try it anyway. */
-	if((size_t)fmt->display_area.right > MAX_WIDTH ||
-	   (size_t)fmt->display_area.bottom > MAX_HEIGHT) {
-		WARN(dec, "Video stream exceeds (%zux%zu) limits.", MAX_WIDTH, MAX_HEIGHT);
+	if((uint32_t)fmt->display_area.right > MAX_WIDTH || 
+	   (uint32_t)fmt->display_area.bottom > MAX_HEIGHT) {
+		WARN(dec, "Video stream exceeds (%ux%u) limits.", MAX_WIDTH, MAX_HEIGHT);
 	}
 	if(fmt->bit_depth_luma_minus8) {
 		WARN(dec, "Unhandled bit depth (%d).  Was the frame compressed by "
@@ -212,11 +212,11 @@ dec_sequence(void* cdc, CUVIDEOFORMAT* fmt) {
 	assert(fmt->chroma_format == cudaVideoChromaFormat_420);
 	assert(fmt->codec == cudaVideoCodec_H264);
 	assert(fmt->progressive_sequence == 1);
-	const size_t w = fmt->display_area.right - fmt->display_area.left;
-	const size_t h = fmt->display_area.bottom - fmt->display_area.top;
+	const uint32_t w = fmt->display_area.right - fmt->display_area.left;
+	const uint32_t h = fmt->display_area.bottom - fmt->display_area.top;
 	/* This appears to happen sometimes, which height are we supposed to use? */
 	if(fmt->coded_height != h) {
-		TRACE(dec, "coded height (%u) does not correspond to height (%zu).",
+		TRACE(dec, "coded height (%u) does not correspond to height (%u).",
 		      fmt->coded_height, h);
 	}
 	/* If this is our first sequence, both the decoder and our internal buffer
@@ -289,7 +289,7 @@ is_device_ptr(const void* ptr) {
 /* reorganize the data from 'nv12' into 'obuf'. */
 static nvp_err_t
 reorganize(struct nvp_decoder* nvp, CUdeviceptr nv12,
-           const size_t width, const size_t height,
+           const uint32_t width, const uint32_t height,
            void* const __restrict obuf, unsigned pitch) {
 	/* is 'obuf' a device pointer?  if so, we can reorganize directly into
 	 * that instead of staging through 'nvp->rgb' first. */
@@ -406,7 +406,7 @@ nvp_cuvid_decode(nvpipe* const cdc,
 	 * One could optimize the scaling cases by potentially reusing the buffer,
 	 * technically. */
 	if(nvp->d.wsrc != nvp->d.wi || nvp->d.hsrc != nvp->d.hi ||
-	   nvp->d.wdst != (size_t)width || nvp->d.hdst != (size_t)height) {
+	   nvp->d.wdst != (uint32_t)width || nvp->d.hdst != (uint32_t)height) {
 		resize(nvp, nvp->d.wsrc, nvp->d.hsrc, width, height);
 		return nvp_cuvid_decode(cdc, ibuf, ibuf_sz, obuf, width, height);
 	}
