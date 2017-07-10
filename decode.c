@@ -375,6 +375,10 @@ nvp_cuvid_decode(nvpipe* const cdc,
 		}
 	}
 
+	/* force resize if the decoder will receive a bigger frame than expected */
+	if (nvp->d.wsrc < width || nvp->d.hsrc < height)
+		resize(nvp, width, height, width, height);
+
 	CUVIDSOURCEDATAPACKET pkt = {0};
 	pkt.payload_size = ibuf_sz;
 	pkt.payload = ibuf;
