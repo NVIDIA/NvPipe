@@ -40,124 +40,127 @@ DECLARE_CHANNEL(yuv);
 
 static cudaError_t
 strm_sync(void* f) {
-	nv_fut_t* fut = (nv_fut_t*)f;
-	const cudaError_t sy = cudaStreamSynchronize(fut->strm);
-	if(cudaSuccess != sy) {
-		ERR(yuv, "Error %d synchronizing stream", sy);
-	}
-	return sy;
+    nv_fut_t* fut = (nv_fut_t*)f;
+    const cudaError_t sy = cudaStreamSynchronize(fut->strm);
+    if(cudaSuccess != sy) {
+        ERR(yuv, "Error %d synchronizing stream", sy);
+    }
+    return sy;
 }
 
 static void
 strm_destroy(void* f) {
-	if(f == NULL) {
-		return;
-	}
-	nv_fut_t* fut = (nv_fut_t*)f;
-	const cudaError_t del = cudaStreamDestroy(fut->strm);
-	if(cudaSuccess != del) {
-		WARN(yuv, "Error %d destroying stream.", del);
-	}
-	fut->strm = 0;
+    if(f == NULL) {
+        return;
+    }
+    nv_fut_t* fut = (nv_fut_t*)f;
+    const cudaError_t del = cudaStreamDestroy(fut->strm);
+    if(cudaSuccess != del) {
+        WARN(yuv, "Error %d destroying stream.", del);
+    }
+    fut->strm = 0;
 }
 
 static nv_fut_t
 strm_create() {
-	nv_fut_t rv = {0};
-	rv.sync = strm_sync;
-	rv.destroy = strm_destroy;
+    nv_fut_t rv = {0};
+    rv.sync = strm_sync;
+    rv.destroy = strm_destroy;
 
-	const cudaError_t cuerr = cudaStreamCreateWithFlags(&rv.strm,
-	                                                    cudaStreamNonBlocking);
-	if(cudaSuccess != cuerr) {
-		ERR(yuv, "Error %d creating stream.", cuerr);
-		return rv;
-	}
-	return rv;
+    const cudaError_t cuerr = cudaStreamCreateWithFlags(&rv.strm,
+                                                        cudaStreamNonBlocking);
+    if(cudaSuccess != cuerr) {
+        ERR(yuv, "Error %d creating stream.", cuerr);
+        return rv;
+    }
+    return rv;
 }
 
 typedef struct rgb_convert {
-	nv_fut_t fut;
-	uint32_t components;
+    nv_fut_t fut;
+    uint32_t components;
 } rgb2yuv_t;
 
 extern cudaError_t
-launch_rgb2yuv(CUdeviceptr rgb, uint32_t width, uint32_t height, uint32_t ncomp,
+launch_rgb2yuv(CUdeviceptr rgb, uint32_t width, uint32_t height,
+               uint32_t widthUser, uint32_t heightUser, uint32_t ncomp,
                CUdeviceptr nv12, unsigned pitch, cudaStream_t strm);
 
 static cudaError_t
 rgb2yuv_submit(void* conv, const CUdeviceptr rgb, uint32_t width, uint32_t height,
+               uint32_t widthUser, uint32_t heightUser,
                CUdeviceptr nv12, unsigned pitch) {
-	rgb2yuv_t* cnv = (rgb2yuv_t*)conv;
-	return launch_rgb2yuv(rgb, width, height, cnv->components, nv12, pitch,
-	                      cnv->fut.strm);
+    rgb2yuv_t* cnv = (rgb2yuv_t*)conv;
+    return launch_rgb2yuv(rgb, width, height, widthUser, heightUser, cnv->components, nv12, pitch,
+                          cnv->fut.strm);
 }
 
 static void
 rgb2yuv_destroy(void* r) {
-	if(r == NULL) {
-		return;
-	}
-	rgb2yuv_t* conv = (rgb2yuv_t*)r;
-	strm_destroy(&conv->fut);
-	memset(conv, 0, sizeof(rgb2yuv_t));
-	free(conv);
+    if(r == NULL) {
+        return;
+    }
+    rgb2yuv_t* conv = (rgb2yuv_t*)r;
+    strm_destroy(&conv->fut);
+    memset(conv, 0, sizeof(rgb2yuv_t));
+    free(conv);
 }
 
 static nv_fut_t*
 rgb2yuv_create(uint32_t components) {
-	rgb2yuv_t* rv = calloc(1, sizeof(rgb2yuv_t));
-	rv->fut = strm_create();
-	nvtxNameCuStream(rv->fut.strm, "encode");
-	rv->fut.submit = rgb2yuv_submit;
-	/* Overwrite destructor with ours. */
-	rv->fut.destroy = rgb2yuv_destroy;
-	rv->components = components;
+    rgb2yuv_t* rv = calloc(1, sizeof(rgb2yuv_t));
+    rv->fut = strm_create();
+    nvtxNameCuStream(rv->fut.strm, "encode");
+    rv->fut.submit = rgb2yuv_submit;
+    /* Overwrite destructor with ours. */
+    rv->fut.destroy = rgb2yuv_destroy;
+    rv->components = components;
 
-	return (nv_fut_t*)rv;
+    return (nv_fut_t*)rv;
 }
 
 typedef struct yuv_convert {
-	nv_fut_t fut;
+    nv_fut_t fut;
 } yuv2rgb_t;
 
 extern cudaError_t
-launch_yuv2rgb(CUdeviceptr nv12, uint32_t width, uint32_t height, unsigned pitch,
+launch_yuv2rgb(CUdeviceptr nv12, uint32_t width, uint32_t height,
+               uint32_t widthUser, uint32_t heightUser, unsigned pitch,
                CUdeviceptr rgb, cudaStream_t strm);
 
 static cudaError_t
 yuv2rgb_submit(void* y, const CUdeviceptr nv12, uint32_t width, uint32_t height,
-               CUdeviceptr rgb, unsigned pitch) {
-	yuv2rgb_t* conv = (yuv2rgb_t*)y;
-	return launch_yuv2rgb(nv12, width, height, pitch, rgb, conv->fut.strm);
+               uint32_t widthUser, uint32_t heightUser, CUdeviceptr rgb, unsigned pitch) {
+    yuv2rgb_t* conv = (yuv2rgb_t*)y;
+    return launch_yuv2rgb(nv12, width, height, widthUser, heightUser, pitch, rgb, conv->fut.strm);
 }
 
 static void
 yuv2rgb_destroy(void* y) {
-	if(y == NULL) {
-		return;
-	}
-	yuv2rgb_t* conv = (yuv2rgb_t*)y;
-	strm_destroy(&conv->fut);
-	memset(conv, 0, sizeof(yuv2rgb_t));
-	free(conv);
+    if(y == NULL) {
+        return;
+    }
+    yuv2rgb_t* conv = (yuv2rgb_t*)y;
+    strm_destroy(&conv->fut);
+    memset(conv, 0, sizeof(yuv2rgb_t));
+    free(conv);
 }
 
 static nv_fut_t*
 yuv2rgb_create() {
-	yuv2rgb_t* rv = calloc(1, sizeof(yuv2rgb_t));
-	rv->fut = strm_create();
-	nvtxNameCuStream(rv->fut.strm, "decode");
-	rv->fut.submit = yuv2rgb_submit;
-	/* Overwrite destructor with ours. */
-	rv->fut.destroy = yuv2rgb_destroy;
-	return (nv_fut_t*)rv;
+    yuv2rgb_t* rv = calloc(1, sizeof(yuv2rgb_t));
+    rv->fut = strm_create();
+    nvtxNameCuStream(rv->fut.strm, "decode");
+    rv->fut.submit = yuv2rgb_submit;
+    /* Overwrite destructor with ours. */
+    rv->fut.destroy = yuv2rgb_destroy;
+    return (nv_fut_t*)rv;
 }
 
 nv_fut_t*
 rgb2nv12(uint32_t components) {
-	return rgb2yuv_create(components);
+    return rgb2yuv_create(components);
 }
 nv_fut_t* nv122rgb() {
-	return yuv2rgb_create();
+    return yuv2rgb_create();
 }

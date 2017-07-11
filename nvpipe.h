@@ -35,15 +35,15 @@ extern "C" {
 
 /** Codecs usable for the encoding/decoding session */
 typedef enum nvpipe_codec {
-	NVPIPE_H264_NV, /**< NVIDIA video codec SDK backend */
-	NVPIPE_H264_NVFFMPEG, /**< NVIDIA-based ffmpeg backend */
-	NVPIPE_H264_FFMPEG, /**< CPU-based ffmpeg backend */
+    NVPIPE_H264_NV, /**< NVIDIA video codec SDK backend */
+    NVPIPE_H264_NVFFMPEG, /**< NVIDIA-based ffmpeg backend */
+    NVPIPE_H264_FFMPEG, /**< CPU-based ffmpeg backend */
 } nvp_codec_t;
 
 /** Supported NvPipe image formats. */
 typedef enum nvpipe_format {
-	NVPIPE_RGB,
-	NVPIPE_RGBA,
+    NVPIPE_RGB,
+    NVPIPE_RGBA,
 } nvp_fmt_t;
 
 /* Avoid a dependency on cuda.h by copying these definitions here. */
@@ -58,16 +58,16 @@ typedef enum nvpipe_format {
 /** NvPipe error codes are a superset of the CUDA error codes.  See
  * nvpipe_strerror. */
 typedef enum nvpipe_error_code {
-	NVPIPE_SUCCESS = cuda_SUCCESS,
-	NVPIPE_EINVAL = cuda_ERROR_INVALID_VALUE,
-	NVPIPE_ENOMEM = cuda_ERROR_OUT_OF_MEMORY,
-	NVPIPE_EMAP = cuda_ERROR_MAP_FAILED,
-	NVPIPE_EUNMAP = cuda_ERROR_UNMAP_FAILED,
-	NVPIPE_ENOENT = cuda_ERROR_FILE_NOT_FOUND,
-	NVPIPE_EENCODE = cuda_ERROR_UNKNOWN+1,
-	NVPIPE_EDECODE = cuda_ERROR_UNKNOWN+2,
-	NVPIPE_EOVERFLOW = cuda_ERROR_UNKNOWN+3,
-	NVPIPE_EAGAIN = cuda_ERROR_UNKNOWN+4,
+    NVPIPE_SUCCESS = cuda_SUCCESS,
+    NVPIPE_EINVAL = cuda_ERROR_INVALID_VALUE,
+    NVPIPE_ENOMEM = cuda_ERROR_OUT_OF_MEMORY,
+    NVPIPE_EMAP = cuda_ERROR_MAP_FAILED,
+    NVPIPE_EUNMAP = cuda_ERROR_UNMAP_FAILED,
+    NVPIPE_ENOENT = cuda_ERROR_FILE_NOT_FOUND,
+    NVPIPE_EENCODE = cuda_ERROR_UNKNOWN+1,
+    NVPIPE_EDECODE = cuda_ERROR_UNKNOWN+2,
+    NVPIPE_EOVERFLOW = cuda_ERROR_UNKNOWN+3,
+    NVPIPE_EAGAIN = cuda_ERROR_UNKNOWN+4,
 } nvp_err_t;
 
 typedef void nvpipe;

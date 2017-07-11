@@ -35,37 +35,37 @@ extern "C" {
 #endif
 
 typedef nvp_err_t (fqn_encode)(
-	nvpipe * const __restrict codec,
-	const void *const __restrict ibuf,
-	const size_t ibuf_sz,
-	void *const __restrict obuf,
-	size_t* const __restrict obuf_sz,
-	const uint32_t width, const uint32_t height,
-	nvp_fmt_t format
-);
+        nvpipe * const __restrict codec,
+        const void *const __restrict ibuf,
+        const size_t ibuf_sz,
+        void *const __restrict obuf,
+        size_t* const __restrict obuf_sz,
+        const uint32_t width, const uint32_t height,
+        nvp_fmt_t format
+        );
 typedef nvp_err_t (fqn_bitrate)(nvpipe* codec, uint64_t);
 typedef nvp_err_t (fqn_decode)(
-	nvpipe* const __restrict codec,
-	const void* const __restrict ibuf, const size_t ibuf_sz,
-	void* const __restrict obuf,
-	uint32_t width, uint32_t height
-);
+        nvpipe* const __restrict codec,
+        const void* const __restrict ibuf, const size_t ibuf_sz,
+        void* const __restrict obuf,
+        uint32_t width, uint32_t height
+        );
 typedef void (fqn_destroy)(nvpipe* const __restrict);
 
 enum objtype {
-	ENCODER=0,
-	DECODER,
+    ENCODER=0,
+    DECODER,
 #if NVPIPE_FFMPEG == 1
-	FFMPEG
+    FFMPEG
 #endif
 };
 
 typedef struct nvp_impl_ {
-	enum objtype type;
-	fqn_encode* encode;
-	fqn_bitrate* bitrate;
-	fqn_decode* decode;
-	fqn_destroy* destroy;
+    enum objtype type;
+    fqn_encode* encode;
+    fqn_bitrate* bitrate;
+    fqn_decode* decode;
+    fqn_destroy* destroy;
 } nvp_impl_t;
 
 nvp_impl_t* nvp_create_encoder(uint64_t bitrate);

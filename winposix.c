@@ -36,23 +36,23 @@ static_assert(0, "This file is for MSVC-based windows only!");
 
 void*
 dlopen(const char* nm, int flags) {
-	(void)flags;
-	HINSTANCE lib = LoadLibrary(nm);
-	return (void*)lib;
+    (void)flags;
+    HINSTANCE lib = LoadLibrary(nm);
+    return (void*)lib;
 }
 
 int
 dlclose(void* handle) {
-	HMODULE lib = (HMODULE)handle;
-	return (int)!FreeLibrary(lib);
+    HMODULE lib = (HMODULE)handle;
+    return (int)!FreeLibrary(lib);
 }
 
 void*
 dlsym(void* __restrict handle, const char* __restrict symbol) {
-	return GetProcAddress((HMODULE)handle, symbol);
+    return GetProcAddress((HMODULE)handle, symbol);
 }
 
 const char*
 dlerror() {
-	return NULL;
+    return NULL;
 }

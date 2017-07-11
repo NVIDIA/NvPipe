@@ -34,7 +34,7 @@ static_assert(false);
 #endif
 
 enum dlflags_t {
-	RTLD_LAZY, RTLD_NOW, RTLD_GLOBAL, RTLD_LOCAL
+    RTLD_LAZY, RTLD_NOW, RTLD_GLOBAL, RTLD_LOCAL
 };
 
 void* dlopen(const char* handle, int flags);

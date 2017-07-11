@@ -38,30 +38,30 @@
 #include <nvToolsExt.h>
 
 struct nvpipe_ {
-	nvp_impl_t impl;
-	NvPipeCodec* codec_ptr_;
+    nvp_impl_t impl;
+    NvPipeCodec* codec_ptr_;
 };
 
 struct profile_blk {
-	profile_blk(const char* const s) {
-		nvtxRangePushA(s);
-	}
-	~profile_blk() {
-		nvtxRangePop();
-	}
+    profile_blk(const char* const s) {
+        nvtxRangePushA(s);
+    }
+    ~profile_blk() {
+        nvtxRangePop();
+    }
 };
 
 static void
 nvp_ffmpeg_destroy(nvpipe* const __restrict cdc) {
-	if(cdc == NULL) {
-		return;
-	}
-	nvpipe_* codec = static_cast<nvpipe_*>(cdc);
-	assert(codec->impl.type == FFMPEG);
+    if(cdc == NULL) {
+        return;
+    }
+    nvpipe_* codec = static_cast<nvpipe_*>(cdc);
+    assert(codec->impl.type == FFMPEG);
 
-	delete codec->codec_ptr_;
-	memset(codec, 0, sizeof(nvpipe_));
-	free(codec);
+    delete codec->codec_ptr_;
+    memset(codec, 0, sizeof(nvpipe_));
+    free(codec);
 }
 
 static nvp_err_t
@@ -72,21 +72,21 @@ nvp_ffmpeg_encode(nvpipe* const __restrict cdc,
                   size_t* const __restrict output_buffer_size,
                   const size_t width, const size_t height, nvp_fmt_t format)
 {
-	assert(cdc);
-	nvpipe_* codec = static_cast<nvpipe_*>(cdc);
+    assert(cdc);
+    nvpipe_* codec = static_cast<nvpipe_*>(cdc);
 
-	/* input images must be a power of two */
-	if(((width | height) & 1) != 0) {
-		return NVPIPE_EINVAL;
-	}
+    /* input images must be a power of two */
+    if(((width | height) & 1) != 0) {
+        return NVPIPE_EINVAL;
+    }
 
-	NvPipeCodec* codec_ptr = static_cast<NvPipeCodec*>(codec->codec_ptr_);
+    NvPipeCodec* codec_ptr = static_cast<NvPipeCodec*>(codec->codec_ptr_);
 
-	profile_blk enc_("encodingSession");
+    profile_blk enc_("encodingSession");
 
-	codec_ptr->setImageSize(width, height);
-	codec_ptr->setInputFrameBuffer(input_buffer, input_buffer_size);
-	return codec_ptr->encode(output_buffer, *output_buffer_size, format);
+    codec_ptr->setImageSize(width, height);
+    codec_ptr->setInputFrameBuffer(input_buffer, input_buffer_size);
+    return codec_ptr->encode(output_buffer, *output_buffer_size, format);
 }
 
 static nvp_err_t
@@ -95,55 +95,55 @@ nvp_ffmpeg_decode(nvpipe* const __restrict cdc,
                   const size_t input_buffer_size,
                   void* const __restrict output_buffer,
                   size_t width, size_t height) {
-	assert(cdc);
-	/* input images must be a power of two */
-	if(((width | height) & 1) != 0) {
-		return NVPIPE_EINVAL;
-	}
+    assert(cdc);
+    /* input images must be a power of two */
+    if(((width | height) & 1) != 0) {
+        return NVPIPE_EINVAL;
+    }
 
-	if(input_buffer_size == 0) {
-		return NVPIPE_EINVAL;
-	}
-	nvpipe_* codec = static_cast<nvpipe_*>(cdc);
+    if(input_buffer_size == 0) {
+        return NVPIPE_EINVAL;
+    }
+    nvpipe_* codec = static_cast<nvpipe_*>(cdc);
 
-	NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*>(codec->codec_ptr_);
+    NvPipeCodec *codec_ptr = static_cast<NvPipeCodec*>(codec->codec_ptr_);
 
-	profile_blk decodesess("decodingSession");
+    profile_blk decodesess("decodingSession");
 
-	codec_ptr->setImageSize(width, height);
-	codec_ptr->setInputPacketBuffer(input_buffer, input_buffer_size);
-	size_t sz = width*height*3;
-	return codec_ptr->decode(output_buffer, width, height, sz, NVPIPE_RGB);
+    codec_ptr->setImageSize(width, height);
+    codec_ptr->setInputPacketBuffer(input_buffer, input_buffer_size);
+    size_t sz = width*height*3;
+    return codec_ptr->decode(output_buffer, width, height, sz, NVPIPE_RGB);
 }
 
 static nvp_err_t
 nvp_ffmpeg_bitrate(nvpipe* cdc, uint64_t br) {
-	nvpipe_* codec = static_cast<nvpipe_*>(cdc);
-	codec->codec_ptr_->setBitrate(static_cast<int64_t>(br));
-	return NVPIPE_SUCCESS;
+    nvpipe_* codec = static_cast<nvpipe_*>(cdc);
+    codec->codec_ptr_->setBitrate(static_cast<int64_t>(br));
+    return NVPIPE_SUCCESS;
 }
 
 nvp_impl_t*
 nvp_create_ffmpeg(bool nvidia, uint64_t bitrate) {
-	const int64_t api_bitrate = static_cast<int64_t>(bitrate);
-	if(api_bitrate < 0) {
-		return NULL;
-	}
+    const int64_t api_bitrate = static_cast<int64_t>(bitrate);
+    if(api_bitrate < 0) {
+        return NULL;
+    }
 
-	nvpipe_* rv = (nvpipe_*) calloc(sizeof(nvpipe_), 1);
-	rv->impl.type = FFMPEG;
-	rv->impl.encode = nvp_ffmpeg_encode;
-	rv->impl.bitrate = nvp_ffmpeg_bitrate;
-	rv->impl.decode = nvp_ffmpeg_decode;
-	rv->impl.destroy = nvp_ffmpeg_destroy;
+    nvpipe_* rv = (nvpipe_*) calloc(sizeof(nvpipe_), 1);
+    rv->impl.type = FFMPEG;
+    rv->impl.encode = nvp_ffmpeg_encode;
+    rv->impl.bitrate = nvp_ffmpeg_bitrate;
+    rv->impl.decode = nvp_ffmpeg_decode;
+    rv->impl.destroy = nvp_ffmpeg_destroy;
 
-	rv->codec_ptr_ = new NvPipeCodec264();
-	rv->codec_ptr_->setBitrate(bitrate);
-	if(nvidia) {
-		rv->codec_ptr_->setCodecImplementation(NV_CODEC);
-	} else {
-		rv->codec_ptr_->setCodecImplementation(FFMPEG_LIBX);
-	}
+    rv->codec_ptr_ = new NvPipeCodec264();
+    rv->codec_ptr_->setBitrate(bitrate);
+    if(nvidia) {
+        rv->codec_ptr_->setCodecImplementation(NV_CODEC);
+    } else {
+        rv->codec_ptr_->setCodecImplementation(FFMPEG_LIBX);
+    }
 
-	return (nvp_impl_t*)rv;
+    return (nvp_impl_t*)rv;
 }
