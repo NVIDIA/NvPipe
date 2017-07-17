@@ -737,11 +737,13 @@ nvp_err_t
 nvp_nvenc_decode(nvpipe* const __restrict codec,
                  const void* const __restrict ibuf, const size_t ibuf_sz,
                  void* const __restrict obuf,
-                 uint32_t width,
-                 uint32_t height) {
+                 const uint32_t width,
+                 const uint32_t height,
+                 nvp_fmt_t format) {
     (void)codec; (void)ibuf; (void)ibuf_sz;
     (void)obuf;
     (void)width; (void)height;
+    (void)format;
     ERR(enc, "Encoder does not implement decoding.  Create a decoder.");
     assert(false); /* Such use is always a programmer error. */
     return NVPIPE_EINVAL;

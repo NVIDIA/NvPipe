@@ -139,13 +139,13 @@ dec_initialize(struct nvp_decoder* nvp, uint32_t iwidth, uint32_t iheight,
             nvp->rgb = 0;
         }
         /* after decode, the buffer is in NV12 format.  A CUDA kernel
-         * reorganizes/converts to RGB, outputting into this buffer.  We will then
+         * reorganizes/converts to RGB(A), outputting into this buffer.  We will then
          * do a standard CUDA copy to put it in the output buffer, since our API
          * works completely on host memory for now. */
-        const size_t nb_rgb = dstwidth*dstheight*3;
+        const size_t nb_rgb = dstwidth*dstheight*4;
         const cudaError_t merr = cudaMalloc((void**)&nvp->rgb, nb_rgb);
         if(cudaSuccess != merr) {
-            ERR(dec, "could not allocate temporary RGB buffer: %d", merr);
+            ERR(dec, "could not allocate temporary RGB(A) buffer: %d", merr);
             nvp->rgb = 0;
             return false;
         }
@@ -291,7 +291,11 @@ static nvp_err_t
 reorganize(struct nvp_decoder* nvp, CUdeviceptr nv12,
            const uint32_t width, const uint32_t height, // padded frame size of device
            const uint32_t widthUser, const uint32_t heightUser, // original input frame size
+           const uint32_t ncomponents,
            void* const __restrict obuf, unsigned pitch) {
+
+    assert(ncomponents == 3 || ncomponents == 4);
+
     /* is 'obuf' a device pointer?  if so, we can reorganize directly into
      * that instead of staging through 'nvp->rgb' first. */
     CUdeviceptr dstbuf = nvp->rgb;
@@ -309,7 +313,7 @@ reorganize(struct nvp_decoder* nvp, CUdeviceptr nv12,
     /* If 'obuf' was *not* the user's buffer, we need to copy from 'dstbuf' into
      * 'obuf'. */
     if(!is_device_ptr(obuf)) {
-        const size_t nb_rgb = widthUser * heightUser * 3;
+        const size_t nb_rgb = widthUser * heightUser * ncomponents;
         const cudaError_t hcopy = cudaMemcpyAsync(obuf, (void*)dstbuf, nb_rgb,
                                                   cudaMemcpyDeviceToHost,
                                                   nvp->reorg->strm);
@@ -335,9 +339,10 @@ reorganize(struct nvp_decoder* nvp, CUdeviceptr nv12,
  * @param[in] codec instance variable
  * @param[in] ibuf the compressed frame
  * @param[in] ibuf_sz  the size in bytes of the compressed data
- * @param[out] obuf where the output frame will be written. must be w*h*3 bytes.
+ * @param[out] obuf where the output frame will be written. must be w*h*components bytes.
  * @param[in] width width of output image
  * @param[in] height height of output image
+ * @param[in] format format of obuf
  *
  * @return NVPIPE_SUCCESS on success, nonzero on error.
  */
@@ -346,7 +351,8 @@ nvp_cuvid_decode(nvpipe* const cdc,
                  const void* const __restrict ibuf,
                  const size_t ibuf_sz,
                  void* const __restrict obuf,
-                 uint32_t width, uint32_t height) {
+                 const uint32_t width, const uint32_t height,
+                 nvp_fmt_t format) {
     struct nvp_decoder* nvp = (struct nvp_decoder*)cdc;
     if(nvp->impl.type != DECODER) {
         ERR(dec, "backend implementation configuration error");
@@ -365,7 +371,12 @@ nvp_cuvid_decode(nvpipe* const cdc,
         return NVPIPE_EINVAL;
     }
     assert(ibuf);
-    assert(obuf);
+    assert(obuf);    
+
+    const uint32_t components = format == NVPIPE_RGB ? 3 : 4;
+    if(nvp->reorg == NULL) {
+        nvp->reorg = nv122rgb(components);
+    }
 
     /* dynamically init our parser: it can be quite slow and eat a lot of
      * resources, so it's preferable to allocate it lazily. */
@@ -408,7 +419,7 @@ nvp_cuvid_decode(nvpipe* const cdc,
             return NVPIPE_EINVAL;
         }
         nvp->empty = true;
-        return nvp_cuvid_decode(cdc, ibuf, ibuf_sz, obuf, width, height);
+        return nvp_cuvid_decode(cdc, ibuf, ibuf_sz, obuf, width, height, format);
     }
     nvp->empty = false;
 
@@ -421,7 +432,7 @@ nvp_cuvid_decode(nvpipe* const cdc,
     if(nvp->d.wsrc != nvp->d.wi || nvp->d.hsrc != nvp->d.hi ||
             nvp->d.wdst != widthDevice || nvp->d.hdst != heightDevice) {
         resize(nvp, nvp->d.wsrc, nvp->d.hsrc, widthDevice, heightDevice);
-        return nvp_cuvid_decode(cdc, ibuf, ibuf_sz, obuf, width, height);
+        return nvp_cuvid_decode(cdc, ibuf, ibuf_sz, obuf, width, height, format);
     }
 
     CUVIDPROCPARAMS map = {0};
@@ -455,8 +466,8 @@ nvp_cuvid_decode(nvpipe* const cdc,
 
     nvtxRangePush("reorganize");
     const nvp_err_t orgerr = reorganize(nvp, data, widthDevice, heightDevice,
-                                        widthUser, heightUser, obuf,
-                                        pitch);
+                                        widthUser, heightUser, components,
+                                        obuf, pitch);
     nvtxRangePop();
     /* Unmap immediately. Even if reorganize() gave an error, we still need to
      * do the unmap before we return, and the return is the only thing left. */
@@ -515,12 +526,7 @@ nvp_create_decoder() {
         return NULL;
     }
 
-    nvp->reorg = nv122rgb();
-    if(NULL == nvp->reorg) {
-        ERR(dec, "could not create internal reorganization object");
-        free(nvp);
-        return NULL;
-    }
+    nvp->reorg = NULL;
 
     return (nvp_impl_t*)nvp;
 }

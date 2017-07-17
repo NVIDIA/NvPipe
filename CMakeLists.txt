@@ -152,7 +152,6 @@ target_link_libraries(${NVPIPE} PRIVATE
   cuda nvcuvid
 )
 
-add_subdirectory(doc/example)
 
 configure_file(
     "cmake/Config.cmake.in"
@@ -182,3 +181,7 @@ install(TARGETS ${NVPIPE}
 install(FILES "${project_config}" DESTINATION lib/cmake/${NVPIPE})
 install(EXPORT nvpipeTargets DESTINATION lib/cmake/${NVPIPE} COMPONENT dev)
 install(EXPORT nvpipeTargets DESTINATION lib/cmake/${NVPIPE})
+
+
+add_subdirectory(doc/egl-example)
+

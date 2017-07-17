@@ -88,7 +88,7 @@ nvpipe_encode(nvpipe* const __restrict cdc,
               const uint32_t width, const uint32_t height, nvp_fmt_t format) {
     assert(cdc);
     nvp_impl_t* enc = (nvp_impl_t*)cdc;
-    return enc->encode(enc, ibuf,ibuf_sz, obuf,obuf_sz, width,height, format);
+    return enc->encode(enc, ibuf, ibuf_sz, obuf, obuf_sz, width, height, format);
 }
 
 nvp_err_t
@@ -96,11 +96,12 @@ nvpipe_decode(nvpipe* const __restrict codec,
               const void* const __restrict ibuf,
               const size_t ibuf_sz,
               void* const __restrict obuf,
-              uint32_t width,
-              uint32_t height) {
+              const uint32_t width,
+              const uint32_t height,
+              nvp_fmt_t format) {
     assert(codec);
     nvp_impl_t* dec = (nvp_impl_t*)codec;
-    return dec->decode(dec, ibuf,ibuf_sz, obuf, width,height);
+    return dec->decode(dec, ibuf, ibuf_sz, obuf, width, height, format);
 }
 
 void

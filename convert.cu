@@ -135,12 +135,12 @@ yuv2b(const uint8_t y, const uint8_t u, const uint8_t v) {
     return (y-16)*1.164f + (u-128)*2.017f;
 }
 
-/* Convert back from NV12 to RGB.   Note the RGB buffer is not pitched. */
+/* Convert back from NV12 to RGB(A).   Note the RGB buffer is not pitched. */
 extern "C" __global__ void
 yuv2rgb(const uint8_t* const __restrict yuv,
         const uint32_t width, const uint32_t height,
-        uint32_t widthUser, uint32_t heightUser, unsigned pitch,
-        uint8_t* const __restrict rgb) {
+        uint32_t widthUser, uint32_t heightUser, const uint32_t components,
+        unsigned pitch, uint8_t* const __restrict rgb) {
     const uint32_t x = blockIdx.x*blockDim.x + threadIdx.x;
     const uint32_t y = blockIdx.y*blockDim.y + threadIdx.y;
     const uint32_t i = y*pitch + x;
@@ -169,31 +169,36 @@ yuv2rgb(const uint8_t* const __restrict yuv,
     const uint8_t v[4] = {
         uv[idx[0]*2+1], uv[idx[1]*2+1], uv[idx[2]*2+1], uv[idx[3]*2+1]
     };
-    rgb[j*3+0] = clamp(
+    rgb[j*components+0] = clamp(
                 (yuv2r(Y[i], u[0], v[0]) + yuv2r(Y[i], u[1], v[1]) +
             yuv2r(Y[i], u[2], v[2]) + yuv2r(Y[i], u[3], v[3])) / 4.0, 0, 255
             );
-    rgb[j*3+1] = clamp(
+    rgb[j*components+1] = clamp(
                 (yuv2g(Y[i], u[0], v[0]) + yuv2g(Y[i], u[1], v[1]) +
             yuv2g(Y[i], u[2], v[2]) + yuv2g(Y[i], u[3], v[3])) / 4.0, 0, 255
             );
-    rgb[j*3+2] = clamp(
+    rgb[j*components+2] = clamp(
                 (yuv2b(Y[i], u[0], v[0]) + yuv2b(Y[i], u[1], v[1]) +
             yuv2b(Y[i], u[2], v[2]) + yuv2b(Y[i], u[3], v[3])) / 4.0, 0, 255
             );
+
+    if (components == 4)
+        rgb[j*components+3] = 255;
 }
 
 extern "C" cudaError_t
 launch_yuv2rgb(CUdeviceptr nv12, uint32_t width, uint32_t height,
-               uint32_t widthUser, uint32_t heightUser, unsigned pitch,
-               CUdeviceptr rgb, cudaStream_t strm) {
+               uint32_t widthUser, uint32_t heightUser, const uint32_t components,
+               unsigned pitch, CUdeviceptr rgb, cudaStream_t strm) {
     /* NvCodec maxes out at 8k anyway. */
     assert(width <= 8192);
     assert(height <= 8192);
+    /* We only support RGB and RGBA data. */
+    assert(components == 3 || components == 4);
     /* NvCodec can't give us a height that isn't evenly divisible. */
     assert(height%2 == 0);
     const void* args[] = {
-        (void*)&nv12, &width, &height, &widthUser, &heightUser, &pitch, (void*)&rgb, 0
+        (void*)&nv12, &width, &height, &widthUser, &heightUser, &components, &pitch, (void*)&rgb, 0
     };
     const dim3 gdim = {(unsigned)(width/16)+1, (unsigned)(height/2), 1};
     const dim3 bdim = {16, 2, 1};

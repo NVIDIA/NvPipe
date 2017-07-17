@@ -23,26 +23,22 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 cmake_minimum_required(VERSION 3.2)
-#project(nvpipe)
+project(egl-example CXX)
 
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -g")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g")
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 
-#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -pthread")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+find_package(EGL)
+find_package(GLEW)
+find_package(CUDA)
 
-#include_directories(${CMAKE_SOURCE_DIR})
-#link_directories($ENV{LD_LIBRARY_PATH})
+if (EGL_FOUND AND GLEW_FOUND AND CUDA_FOUND)
+    add_executable(egl-example egl-example.cpp)
+    target_include_directories(egl-example PUBLIC ${EGL_INCLUDE_DIR} ${GLEW_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+    target_link_libraries(egl-example PUBLIC ${EGL_LIBRARIES} ${GLEW_LIBRARIES} ${CUDA_LIBRARIES} ${NVPIPE})
+endif()
 
-# AJ library
-set(NVPIPE "nvpipe")
-#link_directories($ENV{LD_LIBRARY_PATH})
-#find_package(CUDA)
 
-if(USE_FFMPEG)
-  add_executable(test_app ${CMAKE_SOURCE_DIR}/doc/example/test.c)
-  link_directories($ENV{CUDA_LIBRARY_PATH})
 
-  target_link_libraries(test_app ${NVPIPE})
-endif(USE_FFMPEG)
+

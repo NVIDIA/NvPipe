@@ -158,9 +158,10 @@ nvp_err_t nvpipe_bitrate(nvpipe* const enc, uint64_t bitrate);
  * @param[in] ibuf the compressed frame, on the host.
  * @param[in] ibuf_sz  the size in bytes of the compressed data
  * @param[out] obuf where the output RGB frame will be written.
- *             must be at least width*height*3 bytes. host or device pointer.
+ *             must be at least width*height*components bytes. host or device pointer.
  * @param[in] width  width of output image
  * @param[in] height height of output image
+ * @param[in] format the format of obuf. alpha channel is set to 255 for RGBA
  *
  * @return NVPIPE_SUCCESS on success, nonzero on error.
  */
@@ -169,8 +170,8 @@ nvpipe_decode(nvpipe* const __restrict codec,
               const void* const __restrict ibuf,
               const size_t ibuf_sz,
               void* const __restrict obuf,
-              uint32_t width,
-              uint32_t height);
+              const uint32_t width, const uint32_t height,
+              nvp_fmt_t format);
 
 /** Retrieve human-readable error message for the given error code.  Note that
  * this is a pointer to constant memory that must NOT be freed or manipulated

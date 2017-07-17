@@ -48,7 +48,8 @@ typedef nvp_err_t (fqn_decode)(
         nvpipe* const __restrict codec,
         const void* const __restrict ibuf, const size_t ibuf_sz,
         void* const __restrict obuf,
-        uint32_t width, uint32_t height
+        const uint32_t width, const uint32_t height,
+        nvp_fmt_t format
         );
 typedef void (fqn_destroy)(nvpipe* const __restrict);
 

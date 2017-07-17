@@ -75,8 +75,8 @@ typedef struct cu_convert_future {
 /** a future that reorganizes RGB[A] data into nv12 data.
  * @param components the number of components: 3 or 4. */
 nv_fut_t* rgb2nv12(uint32_t components);
-/** a future that reorganizes nv12 data into RGB data. */
-nv_fut_t* nv122rgb();
+/** a future that reorganizes nv12 data into RGB[A] data. */
+nv_fut_t* nv122rgb(uint32_t components);
 
 #ifdef __cplusplus
 }

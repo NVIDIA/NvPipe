@@ -60,7 +60,7 @@ A sample encoding scenario:
     uint32_t N = 0;
     recv(socket, &N, sizeof(uin32_t), ...);
     recv(socket, strm, from_network_byte_order(N), ...);
-    nvpipe_decode(dec, strm,N, rgb, width, height);
+    nvpipe_decode(dec, strm,N, rgb, width, height, NVPIPE_RGB);
     use_frame(rgb, width, height); // blit, save; whatever.
   }
 
@@ -92,6 +92,17 @@ The only special CMake variable is the boolean
 that controls whether or not the (optional) ffmpeg-based backend is built.
 
 Only shared libraries are supported.
+
+
+EGL Offscreen Example
+=====================
+An EGL-based offscreen rendering example is included in doc/egl-example, which
+is automatically built if the required dependencies are found.
+
+Exemplary CMake line for Ubuntu 17.04 with the nvidia-375 driver package:
+	
+	CC=gcc-5 CXX=g++-5 cmake -DCMAKE_C_FLAGS=-L/usr/lib/nvidia-375 -DEGL_LIBRARY=/usr/lib/nvidia-375/libEGL.so  -DEGL_opengl_LIBRARY=/usr/lib/nvidia-375/libOpenGL.so ..
+
 
 (Optional) FFMpeg-based backend
 ===============================
