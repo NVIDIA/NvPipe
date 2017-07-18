@@ -29,6 +29,10 @@ set(NVPIPE "nvpipe")
 
 project(${NVPIPE})
 
+# Disable in-source builds
+set(CMAKE_DISABLE_SOURCE_CHANGES ON)
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
+
 # Configuration
 set(config_install_dir "lib/cmake/${PROJECT_NAME}")
 set(include_install_dir "include")
