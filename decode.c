@@ -283,7 +283,7 @@ static bool
 is_device_ptr(const void* ptr) {
     struct cudaPointerAttributes attr;
     const cudaError_t perr = cudaPointerGetAttributes(&attr, ptr);
-    return perr == cudaSuccess && attr.devicePointer != NULL;
+    return perr == cudaSuccess && attr.memoryType == cudaMemoryTypeDevice;
 }
 
 /* reorganize the data from 'nv12' into 'obuf'. */
