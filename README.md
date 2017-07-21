@@ -1,7 +1,7 @@
 Introduction
 ============
 
-NVPipe is a simple and lightweight library for low-latency video compression.  It
+NvPipe is a simple and lightweight library for low-latency video compression.  It
 provides access to NVIDIA's hardware-accelerated codecs as well as a fallback
 to libx264 (via FFMpeg).
 
@@ -9,11 +9,14 @@ It is a great choice to drastically lower the bandwidth required for your
 networked interactive client/server application.  It would be a poor choice for
 streaming passive video content.
 
+Please note that NvPipe acts as a lightweight synchronous convenience layer around the [NVIDIA Video Codec SDK](https://developer.nvidia.com/nvidia-video-codec-sdk) and doesn't offer all high-performance capabilities. 
+If you're looking for ultimate encode/decode performance, you may want to consider using NvCodec directly.
+
 Sample usage
 ============
 
 The library is specifically designed to be easily integratable into existing
-low-latency streaming applications.  NVPipe does not take over any of the
+low-latency streaming applications.  NvPipe does not take over any of the
 network communication aspects, allowing your application to dictate the
 client/server scenario it is used in.
 
@@ -89,12 +92,11 @@ The only special CMake variable is the boolean
 
   USE_FFMPEG
 
-that controls whether or not the (optional) ffmpeg-based backend is built.
+that controls whether or not the (optional) FFMpeg-based backend is built.
 
 Only shared libraries are supported.
 
-
-EGL Offscreen Example
+EGL offscreen example
 =====================
 An EGL-based offscreen rendering example is included in doc/egl-example, which
 is automatically built if the required dependencies are found.
@@ -176,10 +178,10 @@ Finally build this library while setting the USE_FFMPEG CMake variable to true.
 Supported platforms
 ===================
 
-NVPipe is supported on both Linux and Windows.  Kepler-class NVIDIA
+NvPipe is supported on both Linux and Windows.  Kepler-class NVIDIA
 hardware is required.  The NVIDIA Video Codec SDK is an optional dependency to
 enable extra features of the generated stream.
 
-OS X support is not plausible in the short term.  NVPipe uses the
+OS X support is not plausible in the short term.  NvPipe uses the
 [NVIDIA Video Codec SDK](https://developer.nvidia.com/nvidia-video-codec-sdk)
 under the hood, and the Video Codec SDK is not available on OS X at this time.
