@@ -617,13 +617,12 @@ nvp_nvenc_encode(nvpipe * const __restrict codec,
 
     CHECK_CONTEXT(nvp->ctx, return NVPIPE_EENCODE);
 
-    /* pad frame size to multiple of 16 */
+    /* pad frame size to multiple of 16 (min size: 48x32) */
     uint32_t widthUser = width;
     uint32_t heightUser = height;
 
-    uint32_t widthDevice = width + ((width % 16) != 0 ? 16 - (width % 16) : 0);
-    uint32_t heightDevice = height + ((height % 16) != 0 ? 16 - (height % 16) : 0);
-
+    uint32_t widthDevice = (width < 48) ? 48 : (width + ((width % 16) != 0 ? 16 - (width % 16) : 0));
+    uint32_t heightDevice = (height < 32) ? 32 : (height + ((height % 16) != 0 ? 16 - (height % 16) : 0));
 
     nvp_err_t errcode = NVPIPE_SUCCESS;
     if(!nvp->initialized) {
