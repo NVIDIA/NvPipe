@@ -124,6 +124,7 @@ if(MSVC)
 else()
   # "dl" and "pthread" only needed on Unix platforms.
   set(nvpipe_libs ${nvpipe_libs} nvToolsExt dl pthread)
+  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; --compiler-options -fPIC)
 endif(MSVC)
 
 cuda_add_library(${NVPIPE} SHARED
