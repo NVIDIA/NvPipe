@@ -889,8 +889,9 @@ nvp_create_encoder(uint64_t bitrate) {
     params.device = nvp->ctx;
     params.deviceType = NV_ENC_DEVICE_TYPE_CUDA;
     params.version = NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER;
-    if(nvp->f.nvEncOpenEncodeSessionEx(&params, &nvp->encoder) != NV_ENC_SUCCESS) {
-        ERR(enc, "error creating encode session");
+    const NVENCSTATUS opn = nvp->f.nvEncOpenEncodeSessionEx(&params, &nvp->encoder);
+    if(opn != NV_ENC_SUCCESS) {
+        ERR(enc, "Error %d creating encode session: %s", opn, nvcodec_strerror(opn));
         dlclose(nvp->lib);
         free(nvp);
         return NULL;
