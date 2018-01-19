@@ -23,7 +23,7 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.3)
 
 set(NVPIPE "nvpipe")
 
@@ -45,16 +45,10 @@ if("${NVIDIA_VIDEO_CODEC_SDK}" STREQUAL "OFF")
   # We include a copy of the v5 SDK header to use as a fallback.
   # But to keep our source unchanged, we always include "nvEncodeAPI.h", so
   # copy the file to that name in our local directory.
-  file(COPY
+  configure_file(
     "${PROJECT_SOURCE_DIR}/nvEncodeAPI-v5.h"
-    DESTINATION
-    "${PROJECT_BINARY_DIR}"
-  )
-  # file(COPY) can't rename the file.
-  file(RENAME
-    "${PROJECT_BINARY_DIR}/nvEncodeAPI-v5.h"
     "${PROJECT_BINARY_DIR}/nvEncodeAPI.h"
-  )
+    COPYONLY)
 else()
   include_directories(AFTER "${NVIDIA_VIDEO_CODEC_SDK}/Samples/common/inc")
   # If we switched from NOT using an extracted SDK (above) to USING an
@@ -67,7 +61,6 @@ include_directories(BEFORE "${PROJECT_BINARY_DIR}")
 
 find_package(CUDA REQUIRED)
 
-cmake_policy(SET CMP0057 NEW)
 if(NOT MSVC)
   if(NOT "--std" IN_LIST CUDA_NVCC_FLAGS)
     list(APPEND CUDA_NVCC_FLAGS "--std c++11")
